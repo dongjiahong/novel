@@ -1,5 +1,5 @@
 import { DictionaryEntry } from '../types';
-import { smallDictionary, largeDictionary, dictionaryStats } from '../dicts/index';
+import { smallDictionary, largeDictionary, getDictionaryStats } from '../dicts/index';
 
 // Helper to normalize word for lookup (remove punctuation, lowercase)
 export const normalizeWord = (word: string): string => {
@@ -10,7 +10,7 @@ export const normalizeWord = (word: string): string => {
  * 检查两个单词是否匹配（考虑词形变化）
  * 用于生词表单词匹配
  */
-export const wordsMatch = (word1: string, word2: string): boolean => {
+export const wordsMatch = async (word1: string, word2: string): Promise<boolean> => {
   const w1 = word1.toLowerCase();
   const w2 = word2.toLowerCase();
 
@@ -19,8 +19,10 @@ export const wordsMatch = (word1: string, word2: string): boolean => {
 
   // 检查是否一个是另一个的词形变化
   // 使用词典查询来确定是否为同一个词的不同形态
-  const entry1 = lookupWord(w1);
-  const entry2 = lookupWord(w2);
+  const [entry1, entry2] = await Promise.all([
+    lookupWord(w1),
+    lookupWord(w2)
+  ]);
 
   // 如果两个单词查到同一个词条，则认为匹配
   if (entry1 && entry2 && entry1 === entry2) {
@@ -34,65 +36,65 @@ export const wordsMatch = (word1: string, word2: string): boolean => {
  * 词典查询策略：优先使用 small 词典，找不到再查 large 词典
  * 这是主要的查询入口函数
  */
-export const lookupWord = (word: string): DictionaryEntry | null => {
+export const lookupWord = async (word: string): Promise<DictionaryEntry | null> => {
   // 先在 small 词典中查找
-  const smallResult = lookupInDictionary(smallDictionary, word);
+  const smallResult = await lookupInDictionary(smallDictionary, word);
   if (smallResult) {
     return smallResult;
   }
 
   // 如果 small 找不到，再查 large 词典
-  const largeResult = lookupInDictionary(largeDictionary, word);
+  const largeResult = await lookupInDictionary(largeDictionary, word);
   return largeResult;
 };
 
 /**
  * 在指定词典中查找单词（支持词形变化）
  */
-const lookupInDictionary = (dictionary: any, rawWord: string): DictionaryEntry | null => {
+const lookupInDictionary = async (dictionary: any, rawWord: string): Promise<DictionaryEntry | null> => {
   if (!dictionary) return null;
 
   // 1. Try exact match
-  let result = dictionary.get(rawWord);
+  let result = await dictionary.get(rawWord);
   if (result) return result;
 
   // 2. Try normalized
   const clean = normalizeWord(rawWord);
   if (!clean) return null;
 
-  result = dictionary.get(clean);
+  result = await dictionary.get(clean);
   if (result) return result;
 
   // 3. Try lowercase
   const lower = clean.toLowerCase();
-  result = dictionary.get(lower);
+  result = await dictionary.get(lower);
   if (result) return result;
 
   // 4. Try singular (basic heuristic)
   if (lower.endsWith('s')) {
-    result = dictionary.get(lower.slice(0, -1));
+    result = await dictionary.get(lower.slice(0, -1));
     if (result) return result;
   }
   if (lower.endsWith('es')) {
-    result = dictionary.get(lower.slice(0, -2));
+    result = await dictionary.get(lower.slice(0, -2));
     if (result) return result;
   }
   if (lower.endsWith('ies')) {
-    result = dictionary.get(lower.slice(0, -3) + 'y');
+    result = await dictionary.get(lower.slice(0, -3) + 'y');
     if (result) return result;
   }
 
   // 5. Try past tense / participles
   if (lower.endsWith('ed')) {
     // tried -> try
-    result = dictionary.get(lower.slice(0, -1));
+    result = await dictionary.get(lower.slice(0, -1));
     if (result) return result;
     // loved -> love
-    result = dictionary.get(lower.slice(0, -2));
+    result = await dictionary.get(lower.slice(0, -2));
     if (result) return result;
     // studied -> study
     if (lower.endsWith('ied')) {
-      result = dictionary.get(lower.slice(0, -3) + 'y');
+      result = await dictionary.get(lower.slice(0, -3) + 'y');
       if (result) return result;
     }
   }
@@ -100,25 +102,25 @@ const lookupInDictionary = (dictionary: any, rawWord: string): DictionaryEntry |
   // 6. Try -ing forms
   if (lower.endsWith('ing')) {
     // running -> run
-    result = dictionary.get(lower.slice(0, -3));
+    result = await dictionary.get(lower.slice(0, -3));
     if (result) return result;
     // making -> make
-    result = dictionary.get(lower.slice(0, -3) + 'e');
+    result = await dictionary.get(lower.slice(0, -3) + 'e');
     if (result) return result;
     // studying -> study
     if (lower.endsWith('ying')) {
-      result = dictionary.get(lower.slice(0, -4) + 'y');
+      result = await dictionary.get(lower.slice(0, -4) + 'y');
       if (result) return result;
     }
   }
 
   // 7. Try comparative/superlative
   if (lower.endsWith('er')) {
-    result = dictionary.get(lower.slice(0, -2));
+    result = await dictionary.get(lower.slice(0, -2));
     if (result) return result;
   }
   if (lower.endsWith('est')) {
-    result = dictionary.get(lower.slice(0, -3));
+    result = await dictionary.get(lower.slice(0, -3));
     if (result) return result;
   }
 
@@ -130,12 +132,13 @@ const lookupInDictionary = (dictionary: any, rawWord: string): DictionaryEntry |
  * @deprecated 使用 lookupWord 替代
  */
 export const loadDictionary = async (): Promise<any> => {
-  console.log(`📚 词典已加载 - Small: ${dictionaryStats.small.toLocaleString()} 词条, Large: ${dictionaryStats.large.toLocaleString()} 词条`);
+  const stats = await getDictionaryStats();
+  console.log(`📚 词典已加载 - Small: ${stats.small.toLocaleString()} 词条, Large: ${stats.large.toLocaleString()} 词条`);
   return {
     // 返回一个兼容对象
     small: smallDictionary,
     large: largeDictionary,
-    stats: dictionaryStats
+    stats
   };
 };
 
@@ -143,6 +146,6 @@ export const loadDictionary = async (): Promise<any> => {
  * 兼容旧版本的查询函数
  * @deprecated 使用 lookupWord 替代
  */
-export const lookupWordInDict = (dictionary: any, rawWord: string): DictionaryEntry | null => {
+export const lookupWordInDict = async (dictionary: any, rawWord: string): Promise<DictionaryEntry | null> => {
   return lookupWord(rawWord);
 };

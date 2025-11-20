@@ -1,10 +1,9 @@
 /**
  * 词典统一入口文件
- * 提供 dict-small 和 dict-large 的导入和类型转换
+ * 提供 dict-small 和 dict-large 的动态导入和类型转换
+ * 优化：使用动态导入实现按需加载，提升首屏加载速度
  */
 
-import { dict as dictSmall } from './dict-small.js';
-import { dict as dictLarge } from './dict-large.js';
 import { DictionaryEntry } from '../types';
 
 // 原始词典类型（字符串格式）
@@ -32,18 +31,39 @@ export const parseDefinition = (definition: string): DictionaryEntry => {
  * 包装原始词典，提供懒加载的 DictionaryEntry 转换
  */
 class DictionaryWrapper {
-  private rawDict: RawDictionary;
+  private rawDict: RawDictionary | null = null;
   private cache: Map<string, DictionaryEntry> = new Map();
+  private loadPromise: Promise<void> | null = null;
+  private loader: () => Promise<{ dict: RawDictionary }>;
 
-  constructor(rawDict: RawDictionary) {
-    this.rawDict = rawDict;
+  constructor(loader: () => Promise<{ dict: RawDictionary }>) {
+    this.loader = loader;
   }
 
-  get(word: string): DictionaryEntry | undefined {
+  /**
+   * 确保词典已加载
+   */
+  private async ensureLoaded(): Promise<void> {
+    if (this.rawDict) return;
+
+    if (!this.loadPromise) {
+      this.loadPromise = this.loader().then(module => {
+        this.rawDict = module.dict;
+      });
+    }
+
+    await this.loadPromise;
+  }
+
+  async get(word: string): Promise<DictionaryEntry | undefined> {
     // 检查缓存
     if (this.cache.has(word)) {
       return this.cache.get(word);
     }
+
+    // 确保词典已加载
+    await this.ensureLoaded();
+    if (!this.rawDict) return undefined;
 
     // 查找原始词典
     const rawDef = this.rawDict[word];
@@ -55,28 +75,71 @@ class DictionaryWrapper {
     return entry;
   }
 
-  has(word: string): boolean {
-    return word in this.rawDict;
+  async has(word: string): Promise<boolean> {
+    await this.ensureLoaded();
+    return this.rawDict ? word in this.rawDict : false;
   }
 
-  keys(): string[] {
-    return Object.keys(this.rawDict);
+  async keys(): Promise<string[]> {
+    await this.ensureLoaded();
+    return this.rawDict ? Object.keys(this.rawDict) : [];
   }
 
-  get size(): number {
-    return Object.keys(this.rawDict).length;
+  async getSize(): Promise<number> {
+    await this.ensureLoaded();
+    return this.rawDict ? Object.keys(this.rawDict).length : 0;
+  }
+
+  /**
+   * 检查是否已加载
+   */
+  isLoaded(): boolean {
+    return this.rawDict !== null;
   }
 }
 
-// 导出包装后的词典
-export const smallDictionary = new DictionaryWrapper(dictSmall as RawDictionary);
-export const largeDictionary = new DictionaryWrapper(dictLarge as RawDictionary);
+// 导出包装后的词典（使用动态导入）
+export const smallDictionary = new DictionaryWrapper(
+  () => import('./dict-small.js')
+);
 
-// 词典统计信息
-export const dictionaryStats = {
-  small: Object.keys(dictSmall).length,
-  large: Object.keys(dictLarge).length,
-  total: Object.keys(dictSmall).length + Object.keys(dictLarge).length
-};
+export const largeDictionary = new DictionaryWrapper(
+  () => import('./dict-large.js')
+);
 
-console.log(`📚 词典加载完成 - Small: ${dictionaryStats.small.toLocaleString()} 词条, Large: ${dictionaryStats.large.toLocaleString()} 词条`);
+/**
+ * 获取词典统计信息（异步）
+ */
+export async function getDictionaryStats() {
+  const [smallSize, largeSize] = await Promise.all([
+    smallDictionary.getSize(),
+    largeDictionary.getSize()
+  ]);
+
+  return {
+    small: smallSize,
+    large: largeSize,
+    total: smallSize + largeSize
+  };
+}
+
+/**
+ * 预加载词典（可选）
+ * 在应用空闲时调用此函数可以预先加载词典
+ */
+export async function preloadDictionaries() {
+  console.log('📚 开始预加载词典...');
+  const startTime = performance.now();
+
+  await Promise.all([
+    smallDictionary.getSize(),
+    largeDictionary.getSize()
+  ]);
+
+  const stats = await getDictionaryStats();
+  const loadTime = ((performance.now() - startTime) / 1000).toFixed(2);
+
+  console.log(`📚 词典加载完成 (${loadTime}s) - Small: ${stats.small.toLocaleString()} 词条, Large: ${stats.large.toLocaleString()} 词条`);
+
+  return stats;
+}

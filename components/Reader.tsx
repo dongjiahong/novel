@@ -22,70 +22,118 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
   const [paragraphsPerPage, setParagraphsPerPage] = useState(8);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // 提取章节中的所有单词并标记生词位置
-  const wordAnalysis = useMemo(() => {
-    const words: { word: string; isNewWord: boolean; index: number }[] = [];
-    let wordIndex = 0;
-    const newWordIndices: number[] = [];
-    const newWordsFoundInList = new Set<string>(); // 记录在生词表中找到的单词
+  // 词汇分析结果状态
+  const [wordAnalysis, setWordAnalysis] = useState<{
+    words: { word: string; isNewWord: boolean; index: number }[];
+    newWordIndices: number[];
+    totalNewWords: number;
+  }>({ words: [], newWordIndices: [], totalNewWords: 0 });
 
-    // 简单的单词提取（与 processText 逻辑一致）
-    const paragraphs = chapter.content.split('\n');
-    paragraphs.forEach(paragraph => {
-      if (!paragraph.trim()) return;
-      if (paragraph.trim().startsWith('#') || paragraph.trim().startsWith('**')) return;
+  // 异步提取章节中的所有单词并标记生词位置
+  useEffect(() => {
+    let cancelled = false;
 
-      const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
-      tokens.forEach(token => {
-        if (/[a-zA-Z]/.test(token)) {
-          const cleanWord = normalizeWord(token);
-          const isKnown = cleanWord ? checkIsKnown(cleanWord) : true;
-          const hasEntry = cleanWord ? lookupWord(cleanWord) !== null : false;
+    const analyzeWords = async () => {
+      const words: { word: string; isNewWord: boolean; index: number }[] = [];
+      let wordIndex = 0;
+      const newWordIndices: number[] = [];
+      const newWordsFoundInList = new Set<string>();
 
-          // 检查是否在生词表中（使用词形匹配）
-          const inNewWordsList = cleanWord ? newWords.some(nw => wordsMatch(cleanWord, nw.word)) : false;
+      // 简单的单词提取（与 processText 逻辑一致）
+      const paragraphs = chapter.content.split('\n');
 
-          // 如果单词在生词表中，或者是未掌握且词典中有的单词，则标记为生词
-          const isNewWord = (inNewWordsList || !isKnown) && hasEntry;
+      for (const paragraph of paragraphs) {
+        if (!paragraph.trim()) continue;
+        if (paragraph.trim().startsWith('#') || paragraph.trim().startsWith('**')) continue;
 
-          words.push({ word: token, isNewWord, index: wordIndex });
+        const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
 
-          if (isNewWord) {
-            newWordIndices.push(wordIndex);
-            if (inNewWordsList && cleanWord) {
-              newWordsFoundInList.add(cleanWord);
+        for (const token of tokens) {
+          if (/[a-zA-Z]/.test(token)) {
+            const cleanWord = normalizeWord(token);
+            const isKnown = cleanWord ? checkIsKnown(cleanWord) : true;
+            const entry = cleanWord ? await lookupWord(cleanWord) : null;
+            const hasEntry = entry !== null;
+
+            // 检查是否在生词表中（使用词形匹配）
+            let inNewWordsList = false;
+            if (cleanWord) {
+              for (const nw of newWords) {
+                if (await wordsMatch(cleanWord, nw.word)) {
+                  inNewWordsList = true;
+                  break;
+                }
+              }
             }
+
+            // 如果单词在生词表中，或者是未掌握且词典中有的单词，则标记为生词
+            const isNewWord = (inNewWordsList || !isKnown) && hasEntry;
+
+            words.push({ word: token, isNewWord, index: wordIndex });
+
+            if (isNewWord) {
+              newWordIndices.push(wordIndex);
+              if (inNewWordsList && cleanWord) {
+                newWordsFoundInList.add(cleanWord);
+              }
+            }
+
+            wordIndex++;
           }
-
-          wordIndex++;
         }
-      });
-    });
+      }
 
-    return { words, newWordIndices, totalNewWords: newWordIndices.length };
+      if (!cancelled) {
+        setWordAnalysis({ words, newWordIndices, totalNewWords: newWordIndices.length });
+      }
+    };
+
+    analyzeWords();
+
+    return () => {
+      cancelled = true;
+    };
   }, [chapter.content, checkIsKnown, newWords]);
 
   // 创建一个 Set 来快速查找哪些单词应该被标注
-  const shouldAnnotateSet = useMemo(() => {
-    const set = new Set<number>();
-    let fromListCount = 0; // 从生词表标注的数量
-    const fromListWords: Array<{word: string, index: number}> = []; // 从生词表标注的单词详情
+  const [shouldAnnotateSet, setShouldAnnotateSet] = useState<Set<number>>(new Set());
 
-    // 1. 标注前 annotatedNewWordsCount 个生词
-    const batchCount = Math.min(annotatedNewWordsCount, wordAnalysis.newWordIndices.length);
-    for (let i = 0; i < batchCount; i++) {
-      set.add(wordAnalysis.newWordIndices[i]);
-    }
+  useEffect(() => {
+    let cancelled = false;
 
-    // 2. 确保生词表中的所有单词都被标注（无论位置）
-    wordAnalysis.words.forEach((w, idx) => {
-      const cleanWord = normalizeWord(w.word);
-      if (cleanWord && newWords.some(nw => wordsMatch(cleanWord, nw.word))) {
-        set.add(idx);
+    const buildAnnotateSet = async () => {
+      const set = new Set<number>();
+
+      // 1. 标注前 annotatedNewWordsCount 个生词
+      const batchCount = Math.min(annotatedNewWordsCount, wordAnalysis.newWordIndices.length);
+      for (let i = 0; i < batchCount; i++) {
+        set.add(wordAnalysis.newWordIndices[i]);
       }
-    });
 
-    return set;
+      // 2. 确保生词表中的所有单词都被标注（无论位置）
+      for (let idx = 0; idx < wordAnalysis.words.length; idx++) {
+        const w = wordAnalysis.words[idx];
+        const cleanWord = normalizeWord(w.word);
+        if (cleanWord) {
+          for (const nw of newWords) {
+            if (await wordsMatch(cleanWord, nw.word)) {
+              set.add(idx);
+              break;
+            }
+          }
+        }
+      }
+
+      if (!cancelled) {
+        setShouldAnnotateSet(set);
+      }
+    };
+
+    buildAnnotateSet();
+
+    return () => {
+      cancelled = true;
+    };
   }, [annotatedNewWordsCount, wordAnalysis.newWordIndices, wordAnalysis.words, newWords]);
 
   // 根据窗口高度动态计算每页段落数

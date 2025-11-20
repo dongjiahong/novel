@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWordContext } from '../context/WordContext';
 import { lookupWord, normalizeWord } from '../services/dictionaryService';
+import { DictionaryEntry } from '../types';
 
 interface AnnotatedWordProps {
   word: string;
@@ -16,13 +17,35 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   paragraph = ''
 }) => {
   const { checkIsKnown, setInteractingWord, checkIsInNewWords } = useWordContext();
+  const [entry, setEntry] = useState<DictionaryEntry | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // 标准化单词并查询词典
+  // 标准化单词
   const cleanWord = normalizeWord(word);
-  const entry = cleanWord ? lookupWord(cleanWord) : null;
   const isKnown = cleanWord ? checkIsKnown(cleanWord) : true;
   const isInNewWords = cleanWord ? checkIsInNewWords(cleanWord) : false;
   const isWordChar = /[a-zA-Z]/.test(word);
+
+  // 异步加载词典数据
+  useEffect(() => {
+    if (!cleanWord || !isWordChar) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    lookupWord(cleanWord).then(result => {
+      if (!cancelled) {
+        setEntry(result);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cleanWord, isWordChar]);
 
   // 从段落中提取包含该单词的句子
   const extractSentence = (para: string, targetWord: string): string => {
@@ -107,7 +130,7 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
       title={isInNewWords ? "生词表 - 点击查看详情" : "点击查看详情"}
     >
       {/* 悬浮注释 - 绝对定位在单词上方 */}
-      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-2px] flex flex-col items-center pointer-events-none z-10">
+      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-8px] flex flex-col items-center pointer-events-none z-10">
         {/* 中文翻译 */}
         <span className={`text-[9px] ${textColorClass} font-medium whitespace-nowrap leading-tight`}>
           {entry.translation?.split(/[,;]/)[0].substring(0, 12) || '...'}
