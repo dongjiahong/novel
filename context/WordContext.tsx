@@ -17,6 +17,7 @@ interface WordContextType {
   // 已掌握单词管理
   knownWords: Set<string>;
   markAsKnown: (word: string) => void;
+  unmarkAsKnown: (word: string) => void;
   checkIsKnown: (word: string) => boolean;
 
   // 生词表管理
@@ -40,6 +41,7 @@ const WordContext = createContext<WordContextType | undefined>(undefined);
 export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDictLoading, setIsDictLoading] = useState(true);
   const [userKnownWords, setUserKnownWords] = useState<Set<string>>(new Set());
+  const [excludedWords, setExcludedWords] = useState<Set<string>>(new Set()); // 用户明确不认识的单词
   const [interactingWord, setInteractingWord] = useState<{ word: string; entry: DictionaryEntry } | null>(null);
   const [currentBook, setCurrentBook] = useState<{ id: string; title: string } | null>(null);
 
@@ -96,45 +98,120 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // 从 LocalStorage 加载用户排除的单词
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('excluded_words');
+      if (stored) {
+        setExcludedWords(new Set(JSON.parse(stored)));
+        console.log(`✅ 已加载用户排除的单词`);
+      }
+    } catch (e) {
+      console.error('Failed to load excluded words', e);
+    }
+  }, []);
+
   /**
    * 标记单词为已掌握（用户手动标记）
    */
   const markAsKnown = (word: string) => {
     const lower = word.toLowerCase();
+    // 添加到已掌握列表
     setUserKnownWords(prev => {
       const next = new Set(prev);
       next.add(lower);
       localStorage.setItem('user_known_words', JSON.stringify(Array.from(next)));
       return next;
     });
+    // 从排除列表中移除（如果存在）
+    setExcludedWords(prev => {
+      const next = new Set(prev);
+      if (next.has(lower)) {
+        next.delete(lower);
+        localStorage.setItem('excluded_words', JSON.stringify(Array.from(next)));
+      }
+      return next;
+    });
+  };
+
+  /**
+   * 取消标记单词为已掌握
+   * 会从用户标记列表中移除，并添加到排除列表（即使是词汇等级默认的单词也会被排除）
+   */
+  const unmarkAsKnown = (word: string) => {
+    const lower = word.toLowerCase();
+    // 从已掌握列表中移除
+    setUserKnownWords(prev => {
+      const next = new Set(prev);
+      next.delete(lower);
+      localStorage.setItem('user_known_words', JSON.stringify(Array.from(next)));
+      return next;
+    });
+    // 添加到排除列表
+    setExcludedWords(prev => {
+      const next = new Set(prev);
+      next.add(lower);
+      localStorage.setItem('excluded_words', JSON.stringify(Array.from(next)));
+      return next;
+    });
   };
 
   /**
    * 检查单词是否已掌握
-   * 包括：词汇等级的单词 + 用户手动标记的单词
+   * 包括：词汇等级的单词 + 用户手动标记的单词 - 用户排除的单词
    */
   const checkIsKnown = (word: string) => {
     const lower = word.toLowerCase();
+
+    // 先检查是否在排除列表中
+    if (excludedWords.has(lower)) return false;
 
     // 检查精确匹配
     if (knownWords.has(lower)) return true;
 
     // 检查复数形式
-    if (lower.endsWith('s') && knownWords.has(lower.slice(0, -1))) return true;
-    if (lower.endsWith('es') && knownWords.has(lower.slice(0, -2))) return true;
-    if (lower.endsWith('ies') && knownWords.has(lower.slice(0, -3) + 'y')) return true;
+    if (lower.endsWith('s')) {
+      const base = lower.slice(0, -1);
+      if (excludedWords.has(base)) return false;
+      if (knownWords.has(base)) return true;
+    }
+    if (lower.endsWith('es')) {
+      const base = lower.slice(0, -2);
+      if (excludedWords.has(base)) return false;
+      if (knownWords.has(base)) return true;
+    }
+    if (lower.endsWith('ies')) {
+      const base = lower.slice(0, -3) + 'y';
+      if (excludedWords.has(base)) return false;
+      if (knownWords.has(base)) return true;
+    }
 
     // 检查过去式
     if (lower.endsWith('ed')) {
-      if (knownWords.has(lower.slice(0, -1))) return true;
-      if (knownWords.has(lower.slice(0, -2))) return true;
-      if (lower.endsWith('ied') && knownWords.has(lower.slice(0, -3) + 'y')) return true;
+      let base = lower.slice(0, -1);
+      if (excludedWords.has(base)) return false;
+      if (knownWords.has(base)) return true;
+
+      base = lower.slice(0, -2);
+      if (excludedWords.has(base)) return false;
+      if (knownWords.has(base)) return true;
+
+      if (lower.endsWith('ied')) {
+        base = lower.slice(0, -3) + 'y';
+        if (excludedWords.has(base)) return false;
+        if (knownWords.has(base)) return true;
+      }
     }
 
     // 检查进行时
     if (lower.endsWith('ing')) {
-      if (knownWords.has(lower.slice(0, -3))) return true;
-      if (knownWords.has(lower.slice(0, -3) + 'e')) return true;
+      let base = lower.slice(0, -3);
+      if (excludedWords.has(base)) return false;
+      if (knownWords.has(base)) return true;
+
+      base = lower.slice(0, -3) + 'e';
+      if (excludedWords.has(base)) return false;
+      if (knownWords.has(base)) return true;
     }
 
     return false;
@@ -150,6 +227,7 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLevelLoading,
         knownWords,
         markAsKnown,
+        unmarkAsKnown,
         checkIsKnown,
         newWords,
         addNewWord,

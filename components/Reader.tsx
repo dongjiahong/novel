@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Chapter } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
-import { lookupWord, normalizeWord } from '../services/dictionaryService';
+import { lookupWord, normalizeWord, wordsMatch } from '../services/dictionaryService';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ReaderProps {
@@ -28,12 +28,8 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     let wordIndex = 0;
     const newWordIndices: number[] = [];
 
-    // 创建生词表单词集合（用于快速查找）
-    const newWordsInList = new Set(
-      newWords
-        .filter(nw => !currentBook || nw.bookId === currentBook.id)
-        .map(nw => nw.word.toLowerCase())
-    );
+    // 获取当前书籍的生词表单词
+    const newWordsInList = newWords.filter(nw => !currentBook || nw.bookId === currentBook.id);
 
     // 简单的单词提取（与 processText 逻辑一致）
     const paragraphs = chapter.content.split('\n');
@@ -47,7 +43,9 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
           const cleanWord = normalizeWord(token);
           const isKnown = cleanWord ? checkIsKnown(cleanWord) : true;
           const hasEntry = cleanWord ? lookupWord(cleanWord) !== null : false;
-          const inNewWordsList = cleanWord ? newWordsInList.has(cleanWord.toLowerCase()) : false;
+
+          // 检查是否在生词表中（使用词形匹配）
+          const inNewWordsList = cleanWord ? newWordsInList.some(nw => wordsMatch(cleanWord, nw.word)) : false;
 
           // 如果单词在生词表中，或者是未掌握且词典中有的单词，则标记为生词
           const isNewWord = (inNewWordsList || !isKnown) && hasEntry;
@@ -76,15 +74,11 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     }
 
     // 2. 确保生词表中的所有单词都被标注（无论位置）
-    const newWordsInList = new Set(
-      newWords
-        .filter(nw => !currentBook || nw.bookId === currentBook.id)
-        .map(nw => nw.word.toLowerCase())
-    );
+    const newWordsInList = newWords.filter(nw => !currentBook || nw.bookId === currentBook.id);
 
     wordAnalysis.words.forEach((w, idx) => {
       const cleanWord = normalizeWord(w.word);
-      if (cleanWord && newWordsInList.has(cleanWord.toLowerCase())) {
+      if (cleanWord && newWordsInList.some(nw => wordsMatch(cleanWord, nw.word))) {
         set.add(idx);
       }
     });

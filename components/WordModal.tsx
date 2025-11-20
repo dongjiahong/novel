@@ -7,6 +7,7 @@ export const WordModal: React.FC = () => {
     interactingWord,
     setInteractingWord,
     markAsKnown,
+    unmarkAsKnown,
     addNewWord,
     currentBook,
     checkIsKnown
@@ -20,6 +21,12 @@ export const WordModal: React.FC = () => {
   // 标记为已认识
   const handleKnown = () => {
     markAsKnown(word);
+    setInteractingWord(null);
+  };
+
+  // 取消认识
+  const handleUnknown = () => {
+    unmarkAsKnown(word);
     setInteractingWord(null);
   };
 
@@ -102,19 +109,25 @@ export const WordModal: React.FC = () => {
             )}
 
             <div className="flex gap-2">
-              <button
-                onClick={handleKnown}
-                className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                  isKnown
-                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-200'
-                }`}
-                disabled={isKnown}
-                title={isKnown ? '已经标记为认识' : '标记为已认识，后续不再显示注释'}
-              >
-                <Check size={16} />
-                {isKnown ? '已认识' : '我认识了'}
-              </button>
+              {!isKnown ? (
+                <button
+                  onClick={handleKnown}
+                  className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-200"
+                  title="标记为已认识，后续不再显示注释"
+                >
+                  <Check size={16} />
+                  我认识了
+                </button>
+              ) : (
+                <button
+                  onClick={handleUnknown}
+                  className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-yellow-600 text-white hover:bg-yellow-700 shadow-md shadow-yellow-200"
+                  title="取消认识标记，重新显示注释"
+                >
+                  <XCircle size={16} />
+                  取消认识
+                </button>
+              )}
 
               <button
                 onClick={handleClose}

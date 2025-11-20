@@ -71,7 +71,7 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
       title="点击查看详情"
     >
       {/* 悬浮注释 - 绝对定位在单词上方 */}
-      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-0.5 flex flex-col items-center pointer-events-none z-10">
+      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-2px] flex flex-col items-center pointer-events-none z-10">
         {/* 中文翻译 */}
         <span className="text-[9px] text-orange-600 font-medium whitespace-nowrap leading-tight">
           {entry.translation?.split(/[,;]/)[0].substring(0, 12) || '...'}

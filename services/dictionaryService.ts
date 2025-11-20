@@ -7,6 +7,30 @@ export const normalizeWord = (word: string): string => {
 };
 
 /**
+ * 检查两个单词是否匹配（考虑词形变化）
+ * 用于生词表单词匹配
+ */
+export const wordsMatch = (word1: string, word2: string): boolean => {
+  const w1 = word1.toLowerCase();
+  const w2 = word2.toLowerCase();
+
+  // 精确匹配
+  if (w1 === w2) return true;
+
+  // 检查是否一个是另一个的词形变化
+  // 使用词典查询来确定是否为同一个词的不同形态
+  const entry1 = lookupWord(w1);
+  const entry2 = lookupWord(w2);
+
+  // 如果两个单词查到同一个词条，则认为匹配
+  if (entry1 && entry2 && entry1 === entry2) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * 词典查询策略：优先使用 small 词典，找不到再查 large 词典
  * 这是主要的查询入口函数
  */
