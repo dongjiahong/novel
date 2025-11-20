@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        allowedHosts: ['mentor.08082025.xyz'], // Allows all hosts
       },
       plugins: [react()],
       define: {

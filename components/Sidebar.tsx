@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Search, Settings, BarChart2, Type, Image as ImageIcon, ChevronDown, ChevronRight, Plus, Trash2, BookOpen } from 'lucide-react';
 import { Book, Chapter } from '../types';
+import SettingsModal from './Settings';
 
 interface SidebarProps {
   books: Book[];
@@ -13,18 +14,19 @@ interface SidebarProps {
   onDeleteBook: (id: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-  books, 
-  activeBookId, 
-  activeChapterId, 
-  chapters, 
-  onSelectBook, 
-  onSelectChapter, 
+const Sidebar: React.FC<SidebarProps> = ({
+  books,
+  activeBookId,
+  activeChapterId,
+  chapters,
+  onSelectBook,
+  onSelectChapter,
   onAddBook,
   onDeleteBook
 }) => {
   const [isLibraryOpen, setLibraryOpen] = useState(true);
   const [isTocOpen, setTocOpen] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,11 +60,18 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-lg font-serif">A</span>
         </button>
          <div className="mt-auto pb-4">
-             <button className="p-2 text-gray-400 hover:text-gray-800 transition-colors">
+             <button
+               onClick={() => setShowSettings(true)}
+               className="p-2 text-gray-400 hover:text-gray-800 transition-colors"
+               title="设置"
+             >
                 <Settings size={20} />
             </button>
          </div>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
       {/* Middle Left: File Tree */}
       <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col overflow-y-auto no-scrollbar text-sm">

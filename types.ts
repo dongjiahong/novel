@@ -23,3 +23,24 @@ export interface Book {
 
 // Navigation Items
 export type NavItem = 'library' | 'search' | 'settings' | 'stats';
+
+// 词汇等级定义
+export interface VocabularyLevel {
+  id: string;
+  name: string;
+  fileName: string;
+  wordCount: number;
+  description?: string;
+}
+
+// 生词记录
+export interface NewWord {
+  word: string;
+  translation?: string;
+  phonetic?: string;
+  bookId: string;
+  bookTitle: string;
+  firstSeenAt: string; // ISO timestamp
+  reviewCount: number;
+  lastReviewedAt?: string;
+}
