@@ -1,8 +1,29 @@
 import JSZip from 'jszip';
 import { Book, Chapter } from '../types';
 
-// Helper to create a safe ID
-const generateId = () => Math.random().toString(36).substr(2, 9);
+/**
+ * 生成字符串的简单 hash 值
+ * 使用 DJB2 hash 算法
+ */
+const simpleHash = (str: string): string => {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i); // hash * 33 + c
+  }
+  // 转换为正数并返回16进制字符串
+  return Math.abs(hash).toString(16);
+};
+
+/**
+ * 为书籍生成基于书名的 ID
+ * 这样同一本书在不同设备上会有相同的 ID，便于同步
+ */
+const generateBookId = (title: string) => `book-${simpleHash(title)}`;
+
+/**
+ * 为章节生成随机 ID
+ */
+const generateChapterId = () => `chapter-${Math.random().toString(36).substr(2, 9)}`;
 
 /**
  * Main entry point to parse a file
@@ -49,7 +70,7 @@ const parseTxt = (file: File): Promise<Book> => {
       if (matches.length === 0) {
         // No chapters found, treat whole file as one chapter
         chapters.push({
-          id: generateId(),
+          id: generateChapterId(),
           title: '全文内容',
           content: content
         });
@@ -70,7 +91,7 @@ const parseTxt = (file: File): Promise<Book> => {
           const formattedContent = `# ${title}\n\n${body}`;
 
           chapters.push({
-            id: generateId(),
+            id: generateChapterId(),
             title: title.substring(0, 50), // Limit title length
             content: formattedContent
           });
@@ -82,7 +103,7 @@ const parseTxt = (file: File): Promise<Book> => {
           const preContent = content.slice(0, matches[0].index);
           if (preContent.trim()) {
               chapters.unshift({
-                  id: generateId(),
+                  id: generateChapterId(),
                   title: '前言 / 序',
                   content: `# 前言\n\n${preContent}`
               });
@@ -90,7 +111,7 @@ const parseTxt = (file: File): Promise<Book> => {
       }
 
       resolve({
-        id: generateId(),
+        id: generateBookId(file.name),
         title: file.name,
         chapters: chapters
       });
@@ -150,7 +171,7 @@ const parseEpub = async (file: File): Promise<Book> => {
 
         if (textContent.trim().length > 50) { // Filter out tiny files (like cover pages sometimes)
             chapters.push({
-                id: generateId(),
+                id: generateChapterId(),
                 title: title.trim().substring(0, 60),
                 content: `# ${title}\n\n${textContent}`
             });
@@ -163,7 +184,7 @@ const parseEpub = async (file: File): Promise<Book> => {
     }
 
     return {
-        id: generateId(),
+        id: generateBookId(file.name),
         title: file.name,
         chapters
     };

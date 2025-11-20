@@ -36,9 +36,9 @@ export const wordsMatch = async (word1: string, word2: string): Promise<boolean>
  * 词典查询策略：优先使用 small 词典，找不到再查 large 词典（如果启用）
  * 这是主要的查询入口函数
  * @param word 要查询的单词
- * @param useLarge 是否使用 large 词典，默认为 true
+ * @param useLarge 是否使用 large 词典，默认为 false
  */
-export const lookupWord = async (word: string, useLarge: boolean = true): Promise<DictionaryEntry | null> => {
+export const lookupWord = async (word: string, useLarge: boolean = false): Promise<DictionaryEntry | null> => {
   // 先在 small 词典中查找
   const smallResult = await lookupInDictionary(smallDictionary, word);
   if (smallResult) {
@@ -135,16 +135,22 @@ const lookupInDictionary = async (dictionary: any, rawWord: string): Promise<Dic
 
 /**
  * 兼容旧版本的 API（保持向后兼容）
+ * 只加载 small 词典,避免不必要的加载 large 词典
  * @deprecated 使用 lookupWord 替代
  */
 export const loadDictionary = async (): Promise<any> => {
-  const stats = await getDictionaryStats();
-  console.log(`📚 词典已加载 - Small: ${stats.small.toLocaleString()} 词条, Large: ${stats.large.toLocaleString()} 词条`);
+  // 只预加载 small 词典
+  const smallSize = await smallDictionary.getSize();
+  console.log(`📚 词典已加载 - Small: ${smallSize.toLocaleString()} 词条 (Large 词典将在需要时按需加载)`);
   return {
     // 返回一个兼容对象
     small: smallDictionary,
     large: largeDictionary,
-    stats
+    stats: {
+      small: smallSize,
+      large: 0, // large 词典未加载
+      total: smallSize
+    }
   };
 };
 

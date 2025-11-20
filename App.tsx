@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Reader from './components/Reader';
 import { MOCK_BOOKS } from './constants';
-import { Book, SyncData } from './types';
+import { Book, BooksMetaData } from './types';
 import { parseFile } from './services/parserService';
+import { syncService } from './services/syncService';
 import { Loader2, BookOpen } from 'lucide-react';
 import { WordProvider, useWordContext } from './context/WordContext';
 import { WordModal } from './components/WordModal';
@@ -21,23 +22,121 @@ function AppContent() {
   const [isParsing, setIsParsing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [downloadingBook, setDownloadingBook] = useState<string | null>(null);
+
+  // 标记是否已执行过启动同步，防止重复触发
+  const hasInitialSyncRef = useRef(false);
 
   // 阅读进度 hook
   const { saveProgress, getProgress, setProgressBatch } = useReadingProgress();
 
   // WebDAV 同步完成回调
-  const handleSyncComplete = useCallback((syncData: SyncData) => {
-    // 更新书籍列表
-    setBooks(syncData.books);
+  const handleSyncComplete = useCallback(async (booksMeta: BooksMetaData) => {
+    console.log('=== WebDAV 同步完成回调 ===');
+    console.log('同步的书籍元数据:', booksMeta);
+    console.log('书籍元数据数量:', booksMeta?.books?.length);
 
-    // 更新阅读进度
-    setProgressBatch(syncData.readingProgress);
+    if (!booksMeta || !booksMeta.books || !Array.isArray(booksMeta.books)) {
+      console.error('同步返回的书籍元数据无效:', booksMeta);
+      return;
+    }
 
-    console.log('同步完成，数据已更新');
-  }, [setProgressBatch]);
+    console.log('同步的书籍元数据:', booksMeta.books.map(b => ({ id: b.id, title: b.title, chapterCount: b.chapterCount })));
+
+    // 下载并解析缺失的书籍文件（按书名判断是否已存在）
+    const currentBookTitles = new Set(books.map(b => b.title));
+    const newBooks: Book[] = [];
+    const newBookFiles = new Map(bookFiles);
+
+    for (const bookMeta of booksMeta.books) {
+      // 如果本地已有此书籍（按书名判断），跳过
+      if (currentBookTitles.has(bookMeta.title)) {
+        console.log(`书籍 ${bookMeta.title} 已存在，跳过`);
+        continue;
+      }
+
+      try {
+        console.log(`开始下载书籍: ${bookMeta.title}`);
+        setDownloadingBook(bookMeta.title);
+        const fileContent = await syncService.downloadBook(bookMeta.id, bookMeta.fileExtension);
+
+        if (!fileContent) {
+          console.warn(`书籍 ${bookMeta.title} 文件不存在于服务器`);
+          continue;
+        }
+
+        console.log(`成功下载书籍 ${bookMeta.title}，文件大小: ${fileContent instanceof ArrayBuffer ? fileContent.byteLength : fileContent.length}，开始解析...`);
+
+        // 将文件内容转换为 File 对象以便解析
+        let file: File;
+        if (fileContent instanceof ArrayBuffer) {
+          // EPUB 文件（二进制）
+          const blob = new Blob([fileContent], { type: 'application/epub+zip' });
+          file = new File([blob], bookMeta.title, { type: 'application/epub+zip' });
+          console.log(`创建 EPUB File 对象，大小: ${blob.size} 字节`);
+        } else {
+          // TXT 文件（文本）
+          const blob = new Blob([fileContent], { type: 'text/plain' });
+          file = new File([blob], bookMeta.title, { type: 'text/plain' });
+          console.log(`创建 TXT File 对象，大小: ${blob.size} 字节`);
+        }
+
+        const parsedBook = await parseFile(file);
+        console.log(`成功解析书籍 ${bookMeta.title}，章节数: ${parsedBook.chapters.length}`);
+
+        newBooks.push(parsedBook);
+        // 保存文件内容（用于后续同步）
+        if (fileContent instanceof ArrayBuffer) {
+          // 将 ArrayBuffer 转换为字符串保存（Base64 编码）
+          const bytes = new Uint8Array(fileContent);
+          let binary = '';
+          for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = btoa(binary);
+          newBookFiles.set(parsedBook.id, base64);
+        } else {
+          newBookFiles.set(parsedBook.id, fileContent);
+        }
+      } catch (error) {
+        console.error(`处理书籍 ${bookMeta.title} 失败:`, error);
+        console.error(`错误详情:`, error instanceof Error ? error.message : error);
+        console.error(`错误堆栈:`, error instanceof Error ? error.stack : '');
+      }
+    }
+
+    // 清除下载状态
+    setDownloadingBook(null);
+
+    // 更新状态
+    if (newBooks.length > 0) {
+      console.log(`添加 ${newBooks.length} 本新书籍到列表`);
+      setBooks(prev => [...prev, ...newBooks]);
+      setBookFiles(newBookFiles);
+
+      // 如果当前没有选中的书籍，选择第一本新书
+      if (!activeBookId && newBooks.length > 0) {
+        const firstBook = newBooks[0];
+        setActiveBookId(firstBook.id);
+        if (firstBook.chapters.length > 0) {
+          const progress = getProgress(firstBook.id);
+          if (progress && firstBook.chapters[progress.chapterIndex]) {
+            setActiveChapterId(firstBook.chapters[progress.chapterIndex].id);
+          } else {
+            setActiveChapterId(firstBook.chapters[0].id);
+          }
+        }
+        console.log(`已选择书籍: ${firstBook.title}`);
+      }
+    } else {
+      console.log('没有需要下载的新书籍');
+    }
+
+    console.log('同步完成回调处理完成');
+  }, [books, bookFiles, activeBookId, getProgress]);
 
   // WebDAV 同步 hook
-  const { syncStatus, lastSyncTime, syncError, manualSync, autoSync } = useWebDAVSync({
+  const { syncStatus, lastSyncTime, syncError, manualSync, autoSync, isConfigured } = useWebDAVSync({
     books,
     bookFiles,
     onSyncComplete: handleSyncComplete,
@@ -53,64 +152,101 @@ function AppContent() {
 
   // 从 localStorage 加载书籍和文件内容
   useEffect(() => {
+    console.log('=== 开始加载书籍数据 ===');
     try {
       const storedBooks = localStorage.getItem(BOOKS_STORAGE_KEY);
       const storedFiles = localStorage.getItem(BOOK_FILES_STORAGE_KEY);
 
+      console.log('localStorage 中的书籍数据:', storedBooks);
+      console.log('localStorage 中的文件数据:', storedFiles ? '存在' : '不存在');
+
       if (storedBooks && storedBooks !== 'undefined' && storedBooks !== 'null') {
         const loadedBooks = JSON.parse(storedBooks);
+        console.log('解析后的书籍数据:', loadedBooks);
+        console.log('是否为数组:', Array.isArray(loadedBooks));
+        console.log('书籍数量:', loadedBooks?.length);
+
         if (Array.isArray(loadedBooks) && loadedBooks.length > 0) {
+          console.log('设置已加载的书籍，数量:', loadedBooks.length);
           setBooks(loadedBooks);
 
           // 如果有书籍，选择第一本
           if (!activeBookId) {
             const firstBook = loadedBooks[0];
-            setActiveBookId(firstBook.id);
+            console.log('第一本书:', firstBook);
+            console.log('第一本书的章节:', firstBook?.chapters);
+            console.log('第一本书的章节数量:', firstBook?.chapters?.length);
 
-            // 尝试从阅读进度恢复位置
-            const progress = getProgress(firstBook.id);
-            if (progress) {
-              setActiveChapterId(firstBook.chapters[progress.chapterIndex]?.id || firstBook.chapters[0]?.id);
-            } else if (firstBook.chapters.length > 0) {
-              setActiveChapterId(firstBook.chapters[0].id);
+            if (firstBook && firstBook.id) {
+              setActiveBookId(firstBook.id);
+
+              // 尝试从阅读进度恢复位置
+              const progress = getProgress(firstBook.id);
+              console.log('阅读进度:', progress);
+
+              if (progress && firstBook.chapters && firstBook.chapters.length > 0) {
+                setActiveChapterId(firstBook.chapters[progress.chapterIndex]?.id || firstBook.chapters[0]?.id);
+              } else if (firstBook.chapters && firstBook.chapters.length > 0) {
+                setActiveChapterId(firstBook.chapters[0].id);
+              } else {
+                console.warn('第一本书没有章节数据');
+              }
+            } else {
+              console.error('第一本书数据无效:', firstBook);
             }
           }
         } else {
+          console.log('书籍数据无效或为空，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
           // 数据无效，使用示例书籍
           setBooks(MOCK_BOOKS);
           if (MOCK_BOOKS.length > 0) {
+            console.log('使用 MOCK_BOOKS[0]:', MOCK_BOOKS[0]);
             setActiveBookId(MOCK_BOOKS[0].id);
-            setActiveChapterId(MOCK_BOOKS[0].chapters[0]?.id || '');
+            setActiveChapterId(MOCK_BOOKS[0].chapters?.[0]?.id || '');
+          } else {
+            console.warn('MOCK_BOOKS 为空，没有默认书籍可用');
           }
         }
       } else {
+        console.log('没有存储的书籍数据，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
         // 如果没有存储的书籍，使用示例书籍
         setBooks(MOCK_BOOKS);
         if (MOCK_BOOKS.length > 0) {
+          console.log('使用 MOCK_BOOKS[0]:', MOCK_BOOKS[0]);
           setActiveBookId(MOCK_BOOKS[0].id);
-          setActiveChapterId(MOCK_BOOKS[0].chapters[0]?.id || '');
+          setActiveChapterId(MOCK_BOOKS[0].chapters?.[0]?.id || '');
+        } else {
+          console.warn('MOCK_BOOKS 为空，没有默认书籍可用');
         }
       }
 
       if (storedFiles && storedFiles !== 'undefined' && storedFiles !== 'null') {
         const filesArray = JSON.parse(storedFiles);
+        console.log('文件数组:', filesArray);
         if (Array.isArray(filesArray)) {
+          console.log('设置书籍文件，数量:', filesArray.length);
           setBookFiles(new Map(filesArray));
         }
       }
     } catch (error) {
       console.error('加载书籍数据失败:', error);
+      console.error('错误堆栈:', error instanceof Error ? error.stack : '');
       // 清除无效数据
       localStorage.removeItem(BOOKS_STORAGE_KEY);
       localStorage.removeItem(BOOK_FILES_STORAGE_KEY);
       // 使用示例书籍
+      console.log('清除数据后，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
       setBooks(MOCK_BOOKS);
       if (MOCK_BOOKS.length > 0) {
+        console.log('使用 MOCK_BOOKS[0]:', MOCK_BOOKS[0]);
         setActiveBookId(MOCK_BOOKS[0].id);
-        setActiveChapterId(MOCK_BOOKS[0].chapters[0]?.id || '');
+        setActiveChapterId(MOCK_BOOKS[0].chapters?.[0]?.id || '');
+      } else {
+        console.warn('MOCK_BOOKS 为空，没有默认书籍可用');
       }
     } finally {
       setIsInitialLoad(false);
+      console.log('=== 书籍数据加载完成 ===');
     }
   }, []);
 
@@ -119,13 +255,11 @@ function AppContent() {
     if (!isInitialLoad && books.length > 0) {
       try {
         localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify(books));
-        // 触发自动同步
-        autoSync();
       } catch (error) {
         console.error('保存书籍数据失败:', error);
       }
     }
-  }, [books, isInitialLoad, autoSync]);
+  }, [books, isInitialLoad]);
 
   // 保存书籍文件内容到 localStorage
   useEffect(() => {
@@ -139,9 +273,10 @@ function AppContent() {
     }
   }, [bookFiles, isInitialLoad]);
 
-  // 应用启动时执行同步
+  // 应用启动时执行同步（只执行一次）
   useEffect(() => {
-    if (!isInitialLoad) {
+    if (!isInitialLoad && !hasInitialSyncRef.current) {
+      hasInitialSyncRef.current = true;
       manualSync();
     }
   }, [isInitialLoad, manualSync]);
@@ -186,8 +321,6 @@ function AppContent() {
                   chapter.title,
                   0 // 段落索引，这里简化为 0
               );
-              // 触发自动同步
-              autoSync();
           }
       }
   };
@@ -220,19 +353,39 @@ function AppContent() {
               setActiveChapterId('');
           }
       }
-
-      // 触发自动同步
-      autoSync();
   };
 
   const handleAddBook = async (file: File) => {
     setIsParsing(true);
     setErrorMsg(null);
     try {
+        console.log(`开始添加书籍: ${file.name}, 类型: ${file.type}, 大小: ${file.size} 字节`);
+
         const newBook = await parseFile(file);
+        console.log(`书籍解析成功: ${newBook.title}, ID: ${newBook.id}, 章节数: ${newBook.chapters.length}`);
 
         // 读取文件内容用于上传
-        const fileContent = await file.text();
+        let fileContent: string;
+        const isEpub = file.name.endsWith('.epub') || file.type === 'application/epub+zip';
+
+        if (isEpub) {
+            // EPUB 文件：读取为 ArrayBuffer，然后转换为 Base64
+            console.log('读取 EPUB 文件为二进制...');
+            const arrayBuffer = await file.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            fileContent = btoa(binary);
+            console.log(`EPUB 文件已转换为 Base64，原始大小: ${arrayBuffer.byteLength} 字节, Base64 大小: ${fileContent.length} 字符`);
+        } else {
+            // TXT 文件：直接读取为文本
+            console.log('读取 TXT 文件为文本...');
+            fileContent = await file.text();
+            console.log(`TXT 文件读取完成，大小: ${fileContent.length} 字符`);
+        }
+
         setBookFiles(prev => {
             const newFiles = new Map(prev);
             newFiles.set(newBook.id, fileContent);
@@ -253,9 +406,6 @@ function AppContent() {
                 0
             );
         }
-
-        // 触发自动同步
-        autoSync();
     } catch (err: any) {
         console.error("Parsing error:", err);
         setErrorMsg(err.message || "解析文件失败");
@@ -306,6 +456,14 @@ function AppContent() {
           </div>
       )}
 
+      {/* 下载书籍提示 */}
+      {downloadingBook && (
+          <div className="absolute top-16 right-4 z-50 bg-purple-100 text-purple-700 px-4 py-2 rounded shadow border border-purple-200 flex items-center gap-2">
+              <Loader2 className="animate-spin" size={16} />
+              <span>正在下载: {downloadingBook}</span>
+          </div>
+      )}
+
       {/* Sidebar Container */}
       <div className="hidden md:block flex-shrink-0 h-full border-r border-gray-200">
         <Sidebar
@@ -319,6 +477,7 @@ function AppContent() {
           onDeleteBook={handleDeleteBook}
           syncStatus={syncStatus}
           onManualSync={manualSync}
+          isWebDAVConfigured={isConfigured}
         />
       </div>
 

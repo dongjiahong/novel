@@ -180,6 +180,23 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     }
   };
 
+  // 处理内容区域点击事件，实现点击左右两侧翻页
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // 获取点击位置
+    const clickX = e.clientX;
+    const windowWidth = window.innerWidth;
+
+    // 左侧 30% 区域：上一页
+    if (clickX < windowWidth * 0.3) {
+      goToPrevPage();
+    }
+    // 右侧 30% 区域：下一页
+    else if (clickX > windowWidth * 0.7) {
+      goToNextPage();
+    }
+    // 中间区域：不做处理，保留原有的单词点击功能
+  };
+
   // 翻页时检查是否需要加载更多标注
   useEffect(() => {
     // 计算当前页最后一个单词的全局索引
@@ -321,9 +338,11 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
       </div>
 
       {/* 内容区域 */}
-      <div className="flex-1 overflow-hidden">
-        <div className="max-w-3xl mx-auto px-8 py-12 h-full">
-          {processText(currentPageParagraphs)}
+      <div className="flex-1 overflow-hidden cursor-pointer" onClick={handleContentClick}>
+        <div className="max-w-3xl mx-auto px-8 py-12 h-full pointer-events-none">
+          <div className="pointer-events-auto">
+            {processText(currentPageParagraphs)}
+          </div>
         </div>
       </div>
 

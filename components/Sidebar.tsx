@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen } from 'lucide-react';
+import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen, RefreshCw } from 'lucide-react';
 import { Book, Chapter, SyncStatus } from '../types';
 import SettingsModal from './Settings';
 
@@ -14,6 +14,7 @@ interface SidebarProps {
   onDeleteBook: (id: string) => void;
   syncStatus?: SyncStatus;
   onManualSync?: () => Promise<boolean>;
+  isWebDAVConfigured?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -26,7 +27,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onAddBook,
   onDeleteBook,
   syncStatus,
-  onManualSync
+  onManualSync,
+  isWebDAVConfigured
 }) => {
   const [isLibraryOpen, setLibraryOpen] = useState(true);
   const [isTocOpen, setTocOpen] = useState(true);
@@ -44,10 +46,34 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  const handleSyncClick = () => {
+    if (!isWebDAVConfigured) {
+      // 未配置 WebDAV，打开设置界面
+      alert('请先在设置中配置 WebDAV 服务器信息');
+      setShowSettings(true);
+    } else if (onManualSync) {
+      onManualSync();
+    }
+  };
+
   return (
     <div className="h-full flex">
       {/* Far Left: Icon Strip */}
       <div className="w-12 bg-gray-50 border-r border-gray-200 flex flex-col items-center py-4 gap-6 z-20">
+         {/* 手动同步按钮 */}
+         <button
+           onClick={handleSyncClick}
+           className={`p-2 transition-colors rounded-md ${
+             syncStatus === 'syncing'
+               ? 'text-blue-600 bg-blue-50 animate-spin'
+               : 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700'
+           }`}
+           title="手动同步"
+           disabled={syncStatus === 'syncing'}
+         >
+            <RefreshCw size={20} />
+         </button>
+
          <div className="mt-auto pb-4">
              <button
                onClick={() => setShowSettings(true)}

@@ -134,20 +134,42 @@ class WebDAVService {
   async ensureDirectory(path: string): Promise<void> {
     try {
       const client = this.getClient();
-      const exists = await client.exists(path);
+
+      // 检查目录是否存在
+      let exists = false;
+      try {
+        exists = await client.exists(path);
+      } catch (error) {
+        // 404 错误表示目录不存在，这是正常的
+        console.log(`目录 ${path} 不存在，准备创建`);
+        exists = false;
+      }
+
       if (!exists) {
-        await client.createDirectory(path);
+        // 递归创建父目录
+        const parentPath = path.substring(0, path.lastIndexOf('/'));
+        if (parentPath && parentPath !== '/novel-reader') {
+          await this.ensureDirectory(parentPath);
+        }
+
+        // 创建当前目录
+        console.log(`创建目录: ${path}`);
+        await client.createDirectory(path, { recursive: true });
+        console.log(`目录创建成功: ${path}`);
+      } else {
+        console.log(`目录已存在: ${path}`);
       }
     } catch (error) {
       console.error(`创建目录 ${path} 失败:`, error);
-      throw error;
+      // 不抛出错误，因为目录可能已经存在但 exists 检查失败
+      // throw error;
     }
   }
 
   /**
    * 上传文件
    */
-  async uploadFile(path: string, content: string | Buffer): Promise<void> {
+  async uploadFile(path: string, content: string | Buffer | ArrayBuffer | Uint8Array): Promise<void> {
     try {
       const client = this.getClient();
 
@@ -157,7 +179,17 @@ class WebDAVService {
         await this.ensureDirectory(parentPath);
       }
 
-      await client.putFileContents(path, content);
+      // WebDAV 客户端支持 string、Buffer、ArrayBuffer 和 Uint8Array
+      // 直接传递即可，无需转换
+      if (content instanceof ArrayBuffer) {
+        console.log(`上传 ArrayBuffer (${content.byteLength} 字节)`);
+      } else if (content instanceof Uint8Array) {
+        console.log(`上传 Uint8Array (${content.length} 字节)`);
+      } else {
+        console.log(`上传文本内容 (${typeof content === 'string' ? content.length : 'unknown'} 字符)`);
+      }
+
+      await client.putFileContents(path, content as any);
     } catch (error) {
       console.error(`上传文件 ${path} 失败:`, error);
       throw error;
@@ -167,11 +199,22 @@ class WebDAVService {
   /**
    * 下载文件
    */
-  async downloadFile(path: string): Promise<string | Buffer> {
+  async downloadFile(path: string, format?: 'text' | 'binary'): Promise<string | Buffer | ArrayBuffer> {
     try {
       const client = this.getClient();
-      const content = await client.getFileContents(path);
-      return content as string | Buffer;
+
+      // 根据文件扩展名或指定的格式决定下载方式
+      const isBinary = format === 'binary' || path.endsWith('.epub');
+
+      if (isBinary) {
+        // 二进制文件，请求 ArrayBuffer
+        const content = await client.getFileContents(path, { format: 'binary' });
+        return content as ArrayBuffer;
+      } else {
+        // 文本文件
+        const content = await client.getFileContents(path, { format: 'text' });
+        return content as string;
+      }
     } catch (error) {
       console.error(`下载文件 ${path} 失败:`, error);
       throw error;
