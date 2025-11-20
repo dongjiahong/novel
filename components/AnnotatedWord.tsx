@@ -63,26 +63,30 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
     );
   }
 
-  // 5. 生词：显示完整标注（Ruby样式）
+  // 5. 生词：显示完整标注（悬浮样式）
   return (
     <span
-      className="inline-flex flex-col items-center justify-center align-middle mx-1 leading-tight group cursor-pointer relative top-2 select-none"
+      className="relative inline-block cursor-pointer group select-text"
       onClick={handleClick}
       title="点击查看详情"
     >
-      {/* 上方：中文翻译 - 使用橙色突出显示生词 */}
-      <span className="text-[10px] text-orange-600 font-medium transform scale-90 whitespace-nowrap h-3 overflow-visible mb-0.5">
-        {entry.translation?.split(/[,;]/)[0].substring(0, 15) || '...'}
+      {/* 悬浮注释 - 绝对定位在单词上方 */}
+      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-0.5 flex flex-col items-center pointer-events-none z-10">
+        {/* 中文翻译 */}
+        <span className="text-[9px] text-orange-600 font-medium whitespace-nowrap leading-tight">
+          {entry.translation?.split(/[,;]/)[0].substring(0, 12) || '...'}
+        </span>
+        {/* 音标 */}
+        {entry.phonetic && (
+          <span className="text-[8px] text-gray-400 font-light whitespace-nowrap leading-tight">
+            {entry.phonetic}
+          </span>
+        )}
       </span>
 
-      {/* 中间：英文单词 - 生词用橙色边框 */}
-      <span className="text-gray-800 font-serif text-lg hover:text-orange-600 transition-colors border-b-2 border-orange-300 hover:border-orange-500">
+      {/* 英文单词 - 生词用橙色文字 */}
+      <span className="text-orange-600 font-serif text-lg hover:text-orange-700 transition-colors">
         {word}
-      </span>
-
-      {/* 下方：音标 - 使用灰色 */}
-      <span className="text-[10px] text-gray-400 font-light transform scale-90 h-3 mt-0.5">
-        {entry.phonetic || ''}
       </span>
     </span>
   );

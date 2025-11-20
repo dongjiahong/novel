@@ -3,17 +3,23 @@ import { Chapter } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
 import { lookupWord, normalizeWord } from '../services/dictionaryService';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ReaderProps {
   chapter: Chapter;
 }
 
 const BATCH_SIZE = 500; // 每批标注500个生词
+const PARAGRAPH_HEIGHT = 140; // 每个段落的估计高度（像素）
+const HEADER_HEIGHT = 50; // 顶部标题栏高度
+const FOOTER_HEIGHT = 72; // 底部翻页按钮高度
+const CONTENT_PADDING = 96; // 内容区域上下padding总和
 
 const Reader: React.FC<ReaderProps> = ({ chapter }) => {
-  const { checkIsKnown } = useWordContext();
+  const { checkIsKnown, newWords, currentBook } = useWordContext();
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [paragraphsPerPage, setParagraphsPerPage] = useState(8);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // 提取章节中的所有单词并标记生词位置
@@ -21,6 +27,13 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     const words: { word: string; isNewWord: boolean; index: number }[] = [];
     let wordIndex = 0;
     const newWordIndices: number[] = [];
+
+    // 创建生词表单词集合（用于快速查找）
+    const newWordsInList = new Set(
+      newWords
+        .filter(nw => !currentBook || nw.bookId === currentBook.id)
+        .map(nw => nw.word.toLowerCase())
+    );
 
     // 简单的单词提取（与 processText 逻辑一致）
     const paragraphs = chapter.content.split('\n');
@@ -34,8 +47,10 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
           const cleanWord = normalizeWord(token);
           const isKnown = cleanWord ? checkIsKnown(cleanWord) : true;
           const hasEntry = cleanWord ? lookupWord(cleanWord) !== null : false;
+          const inNewWordsList = cleanWord ? newWordsInList.has(cleanWord.toLowerCase()) : false;
 
-          const isNewWord = !isKnown && hasEntry;
+          // 如果单词在生词表中，或者是未掌握且词典中有的单词，则标记为生词
+          const isNewWord = (inNewWordsList || !isKnown) && hasEntry;
 
           words.push({ word: token, isNewWord, index: wordIndex });
 
@@ -49,61 +64,119 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     });
 
     return { words, newWordIndices, totalNewWords: newWordIndices.length };
-  }, [chapter.content, checkIsKnown]);
+  }, [chapter.content, checkIsKnown, newWords, currentBook]);
 
   // 创建一个 Set 来快速查找哪些单词应该被标注
   const shouldAnnotateSet = useMemo(() => {
     const set = new Set<number>();
-    // 只标注前 annotatedNewWordsCount 个生词
+
+    // 1. 标注前 annotatedNewWordsCount 个生词
     for (let i = 0; i < Math.min(annotatedNewWordsCount, wordAnalysis.newWordIndices.length); i++) {
       set.add(wordAnalysis.newWordIndices[i]);
     }
-    return set;
-  }, [annotatedNewWordsCount, wordAnalysis.newWordIndices]);
 
-  // 重置滚动位置和标注计数（章节切换时）
-  useEffect(() => {
-    setAnnotatedNewWordsCount(BATCH_SIZE);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, [chapter.id]);
-
-  // 设置 Intersection Observer 来监听滚动
-  useEffect(() => {
-    if (!loadMoreRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          // 当底部元素进入视野时，加载更多标注
-          setAnnotatedNewWordsCount(prev => {
-            const next = prev + BATCH_SIZE;
-            if (next > prev) {
-              console.log(`📝 加载更多标注: ${prev} → ${Math.min(next, wordAnalysis.totalNewWords)}`);
-            }
-            return next;
-          });
-        }
-      },
-      {
-        root: contentRef.current,
-        rootMargin: '200px', // 提前200px触发加载
-        threshold: 0.1
-      }
+    // 2. 确保生词表中的所有单词都被标注（无论位置）
+    const newWordsInList = new Set(
+      newWords
+        .filter(nw => !currentBook || nw.bookId === currentBook.id)
+        .map(nw => nw.word.toLowerCase())
     );
 
-    observer.observe(loadMoreRef.current);
+    wordAnalysis.words.forEach((w, idx) => {
+      const cleanWord = normalizeWord(w.word);
+      if (cleanWord && newWordsInList.has(cleanWord.toLowerCase())) {
+        set.add(idx);
+      }
+    });
 
-    return () => observer.disconnect();
-  }, [wordAnalysis.totalNewWords]);
+    return set;
+  }, [annotatedNewWordsCount, wordAnalysis.newWordIndices, wordAnalysis.words, newWords, currentBook]);
 
-  // 处理文本：分词并渲染
-  const processText = (text: string) => {
+  // 根据窗口高度动态计算每页段落数
+  useEffect(() => {
+    const calculateParagraphsPerPage = () => {
+      const windowHeight = window.innerHeight;
+      const availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING;
+      const calculatedParagraphs = Math.max(3, Math.floor(availableHeight / PARAGRAPH_HEIGHT));
+      setParagraphsPerPage(calculatedParagraphs);
+      console.log(`📏 窗口高度: ${windowHeight}px, 可用高度: ${availableHeight}px, 每页段落数: ${calculatedParagraphs}`);
+    };
+
+    // 初始计算
+    calculateParagraphsPerPage();
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', calculateParagraphsPerPage);
+    return () => window.removeEventListener('resize', calculateParagraphsPerPage);
+  }, []);
+
+  // 重置页码和标注计数（章节切换时）
+  useEffect(() => {
+    setAnnotatedNewWordsCount(BATCH_SIZE);
+    setCurrentPage(0);
+  }, [chapter.id]);
+
+  // 计算段落总数和总页数
+  const paragraphs = useMemo(() => {
+    return chapter.content.split('\n').filter(p => p.trim());
+  }, [chapter.content]);
+
+  const totalPages = Math.ceil(paragraphs.length / paragraphsPerPage);
+
+  // 翻页函数
+  const goToNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // 翻页时检查是否需要加载更多标注
+  useEffect(() => {
+    // 计算当前页最后一个单词的全局索引
+    const paragraphsUpToCurrentPage = paragraphs.slice(0, (currentPage + 1) * paragraphsPerPage);
+    let wordCount = 0;
+
+    paragraphsUpToCurrentPage.forEach(paragraph => {
+      const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
+      tokens.forEach(token => {
+        if (/[a-zA-Z]/.test(token)) {
+          wordCount++;
+        }
+      });
+    });
+
+    // 如果当前页的单词数超过已标注的数量，加载更多
+    if (wordCount > annotatedNewWordsCount && annotatedNewWordsCount < wordAnalysis.totalNewWords) {
+      setAnnotatedNewWordsCount(prev => {
+        const next = Math.min(prev + BATCH_SIZE, wordAnalysis.totalNewWords);
+        console.log(`📝 翻页加载更多标注: ${prev} → ${next}`);
+        return next;
+      });
+    }
+  }, [currentPage, paragraphs, paragraphsPerPage, annotatedNewWordsCount, wordAnalysis.totalNewWords]);
+
+  // 处理文本：分词并渲染当前页的段落
+  const processText = (paragraphsToRender: string[]) => {
     let globalWordIndex = 0;
 
-    return text.split('\n').map((paragraph, pIndex) => {
+    // 计算当前页之前的所有单词数（用于正确的单词索引）
+    const paragraphsBeforeCurrentPage = paragraphs.slice(0, currentPage * paragraphsPerPage);
+    paragraphsBeforeCurrentPage.forEach(paragraph => {
+      const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
+      tokens.forEach(token => {
+        if (/[a-zA-Z]/.test(token)) {
+          globalWordIndex++;
+        }
+      });
+    });
+
+    return paragraphsToRender.map((paragraph, pIndex) => {
       if (!paragraph.trim()) return <div key={pIndex} className="h-6" />;
 
       // 标题检测
@@ -155,10 +228,17 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     });
   };
 
+  // 获取当前页的段落
+  const currentPageParagraphs = useMemo(() => {
+    const start = currentPage * paragraphsPerPage;
+    const end = start + paragraphsPerPage;
+    return paragraphs.slice(start, end);
+  }, [paragraphs, currentPage, paragraphsPerPage]);
+
   return (
-    <div ref={contentRef} className="flex-1 h-full overflow-y-auto bg-white relative">
+    <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-white relative flex flex-col">
       {/* 顶部标题栏 */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-2 flex items-center shadow-sm">
+      <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center shadow-sm flex-shrink-0">
         <span className="text-sm text-gray-500 flex items-center gap-2">
           <svg
             className="w-4 h-4"
@@ -184,24 +264,46 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
           </span>
         )}
 
-        <button className="ml-auto text-gray-400 hover:text-gray-600">
-          <span className="text-xl">×</span>
-        </button>
+        {/* 页码显示 */}
+        <span className="ml-auto text-xs text-gray-400">
+          第 {currentPage + 1} / {totalPages} 页
+        </span>
       </div>
 
       {/* 内容区域 */}
-      <div className="max-w-3xl mx-auto px-8 py-12 pb-32">
-        {processText(chapter.content)}
+      <div className="flex-1 overflow-hidden">
+        <div className="max-w-3xl mx-auto px-8 py-12 h-full">
+          {processText(currentPageParagraphs)}
+        </div>
+      </div>
 
-        {/* 加载更多触发器 */}
-        {annotatedNewWordsCount < wordAnalysis.totalNewWords && (
-          <div ref={loadMoreRef} className="h-10 flex items-center justify-center text-gray-400 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
-              加载更多标注...
-            </div>
-          </div>
-        )}
+      {/* 翻页按钮 */}
+      <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4 flex items-center justify-between">
+        <button
+          onClick={goToPrevPage}
+          disabled={currentPage === 0}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            currentPage === 0
+              ? 'text-gray-300 cursor-not-allowed'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <ChevronLeft size={20} />
+          <span>上一页</span>
+        </button>
+
+        <button
+          onClick={goToNextPage}
+          disabled={currentPage >= totalPages - 1}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            currentPage >= totalPages - 1
+              ? 'text-gray-300 cursor-not-allowed'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <span>下一页</span>
+          <ChevronRight size={20} />
+        </button>
       </div>
     </div>
   );

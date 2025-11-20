@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Search, Settings, BarChart2, Type, Image as ImageIcon, ChevronDown, ChevronRight, Plus, Trash2, BookOpen } from 'lucide-react';
+import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen } from 'lucide-react';
 import { Book, Chapter } from '../types';
 import SettingsModal from './Settings';
 
@@ -44,21 +44,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     <div className="h-full flex">
       {/* Far Left: Icon Strip */}
       <div className="w-12 bg-gray-50 border-r border-gray-200 flex flex-col items-center py-4 gap-6 z-20">
-        <button className="p-2 text-gray-400 hover:text-gray-800 transition-colors">
-          <Search size={20} />
-        </button>
-        <button className="p-2 text-gray-800 bg-gray-200 rounded-md">
-          <Type size={20} />
-        </button>
-        <button className="p-2 text-gray-400 hover:text-gray-800 transition-colors">
-          <ImageIcon size={20} />
-        </button>
-        <button className="p-2 text-gray-400 hover:text-gray-800 transition-colors">
-          <BarChart2 size={20} />
-        </button>
-        <button className="p-2 text-gray-400 hover:text-gray-800 transition-colors">
-            <span className="text-lg font-serif">A</span>
-        </button>
          <div className="mt-auto pb-4">
              <button
                onClick={() => setShowSettings(true)}
