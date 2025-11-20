@@ -2,7 +2,7 @@
  * 词典统一入口文件
  * 提供 dict-small 和 dict-large 的动态导入和类型转换
  * 优化：使用动态导入实现按需加载，提升首屏加载速度
- * 缓存：使用 localStorage 缓存词典，避免重复下载
+ * 缓存：使用 IndexedDB 缓存词典，避免重复下载和 localStorage 配额限制
  */
 
 import { DictionaryEntry } from '../types';
@@ -11,13 +11,33 @@ import { DictionaryEntry } from '../types';
 type RawDictionary = { [key: string]: string };
 
 // 词典版本号，更新词典时递增此版本号以清除旧缓存
-const DICT_VERSION = '1.0.0';
+const DICT_VERSION = '2.0.0'; // 更新版本号以清除 localStorage 旧缓存
+
+// IndexedDB 配置
+const DICT_DB_NAME = 'NovelReaderDictDB';
+const DICT_DB_VERSION = 1;
+const DICT_STORE_NAME = 'dictionaries';
 
 /**
  * 将字符串格式的释义转换为 DictionaryEntry 对象
  * 例如: "n. 狗; vt. 跟踪" -> { translation: "狗; 跟踪", phonetic: undefined }
  */
-export const parseDefinition = (definition: string): DictionaryEntry => {
+export const parseDefinition = (definition: string | any): DictionaryEntry => {
+  // 如果已经是对象格式，直接返回
+  if (typeof definition === 'object' && definition !== null) {
+    return {
+      translation: definition.translation || '',
+      phonetic: definition.phonetic,
+      definition: definition.definition || definition.translation || ''
+    };
+  }
+
+  // 如果不是字符串，转换为字符串
+  if (typeof definition !== 'string') {
+    console.warn('词典数据格式异常，尝试转换:', typeof definition, definition);
+    definition = String(definition);
+  }
+
   // 简单的解析：提取词性标记后的内容作为翻译
   const cleanDef = definition
     .replace(/\\r/g, '')  // 移除转义的回车符
@@ -32,8 +52,27 @@ export const parseDefinition = (definition: string): DictionaryEntry => {
 };
 
 /**
+ * 初始化 IndexedDB 数据库
+ */
+async function initDictDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DICT_DB_NAME, DICT_DB_VERSION);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(DICT_STORE_NAME)) {
+        db.createObjectStore(DICT_STORE_NAME);
+      }
+    };
+  });
+}
+
+/**
  * 包装原始词典，提供懒加载的 DictionaryEntry 转换
- * 支持 localStorage 缓存
+ * 支持 IndexedDB 缓存
  */
 class DictionaryWrapper {
   private rawDict: RawDictionary | null = null;
@@ -48,49 +87,88 @@ class DictionaryWrapper {
   }
 
   /**
-   * 从 localStorage 加载词典
+   * 从 IndexedDB 加载词典
    */
-  private loadFromStorage(): RawDictionary | null {
+  private async loadFromStorage(): Promise<RawDictionary | null> {
     try {
-      const storedData = localStorage.getItem(this.storageKey);
-      if (!storedData) return null;
+      const db = await initDictDB();
+      const transaction = db.transaction([DICT_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(DICT_STORE_NAME);
+      const request = store.get(this.storageKey);
 
-      const parsed = JSON.parse(storedData);
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+          const storedData = request.result;
+          if (!storedData) {
+            resolve(null);
+            return;
+          }
 
-      // 检查版本号
-      if (parsed.version !== DICT_VERSION) {
-        console.log(`📚 词典版本已更新 (${parsed.version} -> ${DICT_VERSION})，清除旧缓存`);
-        localStorage.removeItem(this.storageKey);
-        return null;
-      }
+          // 检查版本号
+          if (storedData.version !== DICT_VERSION) {
+            console.log(`📚 词典版本已更新 (${storedData.version} -> ${DICT_VERSION})，清除旧缓存`);
+            this.clearFromStorage();
+            resolve(null);
+            return;
+          }
 
-      console.log(`📚 从缓存加载词典: ${this.storageKey}`);
-      return parsed.dict;
+          console.log(`📚 从 IndexedDB 加载词典: ${this.storageKey}`);
+          resolve(storedData.dict);
+        };
+        request.onerror = () => {
+          console.error(`❌ 读取词典缓存失败 (${this.storageKey}):`, request.error);
+          resolve(null);
+        };
+      });
     } catch (error) {
-      console.error(`❌ 读取词典缓存失败 (${this.storageKey}):`, error);
-      localStorage.removeItem(this.storageKey);
+      console.error(`❌ IndexedDB 操作失败 (${this.storageKey}):`, error);
       return null;
     }
   }
 
   /**
-   * 保存词典到 localStorage
+   * 保存词典到 IndexedDB
    */
-  private saveToStorage(dict: RawDictionary): void {
+  private async saveToStorage(dict: RawDictionary): Promise<void> {
     try {
+      const db = await initDictDB();
+      const transaction = db.transaction([DICT_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(DICT_STORE_NAME);
+
       const data = {
         version: DICT_VERSION,
         dict: dict,
         timestamp: Date.now()
       };
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-      console.log(`📚 词典已缓存: ${this.storageKey}`);
+
+      store.put(data, this.storageKey);
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => {
+          console.log(`📚 词典已缓存到 IndexedDB: ${this.storageKey}`);
+          resolve();
+        };
+        transaction.onerror = () => {
+          console.error(`❌ 保存词典缓存失败 (${this.storageKey}):`, transaction.error);
+          reject(transaction.error);
+        };
+      });
     } catch (error) {
-      console.error(`❌ 保存词典缓存失败 (${this.storageKey}):`, error);
-      // localStorage 可能已满，尝试清理
-      if (error instanceof Error && error.name === 'QuotaExceededError') {
-        console.log('💾 localStorage 空间不足，跳过缓存');
-      }
+      console.error(`❌ IndexedDB 操作失败 (${this.storageKey}):`, error);
+    }
+  }
+
+  /**
+   * 从 IndexedDB 清除词典缓存
+   */
+  private async clearFromStorage(): Promise<void> {
+    try {
+      const db = await initDictDB();
+      const transaction = db.transaction([DICT_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(DICT_STORE_NAME);
+      store.delete(this.storageKey);
+    } catch (error) {
+      console.error(`❌ 清除词典缓存失败 (${this.storageKey}):`, error);
     }
   }
 
@@ -102,8 +180,19 @@ class DictionaryWrapper {
 
     if (!this.loadPromise) {
       this.loadPromise = (async () => {
-        // 尝试从缓存加载
-        const cachedDict = this.loadFromStorage();
+        // 清除 localStorage 中的旧缓存（迁移到 IndexedDB）
+        try {
+          const oldCache = localStorage.getItem(this.storageKey);
+          if (oldCache) {
+            console.log(`🧹 清除 localStorage 旧词典缓存: ${this.storageKey}`);
+            localStorage.removeItem(this.storageKey);
+          }
+        } catch (error) {
+          // 忽略错误
+        }
+
+        // 尝试从 IndexedDB 缓存加载
+        const cachedDict = await this.loadFromStorage();
         if (cachedDict) {
           this.rawDict = cachedDict;
           return;
@@ -114,8 +203,8 @@ class DictionaryWrapper {
         const module = await this.loader();
         this.rawDict = module.dict;
 
-        // 保存到缓存
-        this.saveToStorage(this.rawDict);
+        // 保存到 IndexedDB 缓存
+        await this.saveToStorage(this.rawDict);
       })();
     }
 
@@ -217,8 +306,23 @@ export async function preloadDictionaries() {
  * 清除词典缓存
  * 用于手动清理或调试
  */
-export function clearDictionaryCache() {
-  localStorage.removeItem('novel-reader-dict-small');
-  localStorage.removeItem('novel-reader-dict-large');
-  console.log('🧹 词典缓存已清除');
+export async function clearDictionaryCache() {
+  try {
+    const db = await initDictDB();
+    const transaction = db.transaction([DICT_STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(DICT_STORE_NAME);
+
+    store.delete('novel-reader-dict-small');
+    store.delete('novel-reader-dict-large');
+
+    return new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => {
+        console.log('🧹 词典缓存已清除');
+        resolve();
+      };
+      transaction.onerror = () => reject(transaction.error);
+    });
+  } catch (error) {
+    console.error('清除词典缓存失败:', error);
+  }
 }

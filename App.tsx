@@ -5,14 +5,12 @@ import { MOCK_BOOKS } from './constants';
 import { Book, BooksMetaData } from './types';
 import { parseFile } from './services/parserService';
 import { syncService } from './services/syncService';
+import { storageService } from './services/storageService';
 import { Loader2, BookOpen } from 'lucide-react';
 import { WordProvider, useWordContext } from './context/WordContext';
 import { WordModal } from './components/WordModal';
 import { useReadingProgress } from './hooks/useReadingProgress';
 import { useWebDAVSync } from './hooks/useWebDAVSync';
-
-const BOOKS_STORAGE_KEY = 'books_data';
-const BOOK_FILES_STORAGE_KEY = 'book_files';
 
 function AppContent() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -155,25 +153,23 @@ function AppContent() {
   const progress = activeBookId ? getProgress(activeBookId) : null;
   const initialPage = (progress && progress.chapterIndex === currentChapterIndex) ? progress.paragraphIndex : 0;
 
-  // 从 localStorage 加载书籍和文件内容
+  // 从 IndexedDB 加载书籍和文件内容
   useEffect(() => {
     console.log('=== 开始加载书籍数据 ===');
-    try {
-      const storedBooks = localStorage.getItem(BOOKS_STORAGE_KEY);
-      const storedFiles = localStorage.getItem(BOOK_FILES_STORAGE_KEY);
 
-      console.log('localStorage 中的书籍数据:', storedBooks);
-      console.log('localStorage 中的文件数据:', storedFiles ? '存在' : '不存在');
+    const loadData = async () => {
+      try {
+        // 从 IndexedDB 加载数据
+        const loadedBooks = await storageService.loadBooks();
+        const loadedFiles = await storageService.loadBookFiles();
 
-      if (storedBooks && storedBooks !== 'undefined' && storedBooks !== 'null') {
-        const loadedBooks = JSON.parse(storedBooks);
-        console.log('解析后的书籍数据:', loadedBooks);
-        console.log('是否为数组:', Array.isArray(loadedBooks));
-        console.log('书籍数量:', loadedBooks?.length);
+        console.log('IndexedDB 中的书籍数量:', loadedBooks.length);
+        console.log('IndexedDB 中的文件数量:', loadedFiles.size);
 
-        if (Array.isArray(loadedBooks) && loadedBooks.length > 0) {
+        if (loadedBooks.length > 0) {
           console.log('设置已加载的书籍，数量:', loadedBooks.length);
           setBooks(loadedBooks);
+          setBookFiles(loadedFiles);
 
           // 如果有书籍，选择第一本
           if (!activeBookId) {
@@ -201,8 +197,8 @@ function AppContent() {
             }
           }
         } else {
-          console.log('书籍数据无效或为空，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
-          // 数据无效，使用示例书籍
+          console.log('没有存储的书籍数据，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
+          // 如果没有存储的书籍，使用示例书籍
           setBooks(MOCK_BOOKS);
           if (MOCK_BOOKS.length > 0) {
             console.log('使用 MOCK_BOOKS[0]:', MOCK_BOOKS[0]);
@@ -212,9 +208,11 @@ function AppContent() {
             console.warn('MOCK_BOOKS 为空，没有默认书籍可用');
           }
         }
-      } else {
-        console.log('没有存储的书籍数据，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
-        // 如果没有存储的书籍，使用示例书籍
+      } catch (error) {
+        console.error('加载书籍数据失败:', error);
+        console.error('错误堆栈:', error instanceof Error ? error.stack : '');
+        // 使用示例书籍
+        console.log('出错后，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
         setBooks(MOCK_BOOKS);
         if (MOCK_BOOKS.length > 0) {
           console.log('使用 MOCK_BOOKS[0]:', MOCK_BOOKS[0]);
@@ -223,58 +221,30 @@ function AppContent() {
         } else {
           console.warn('MOCK_BOOKS 为空，没有默认书籍可用');
         }
+      } finally {
+        setIsInitialLoad(false);
+        console.log('=== 书籍数据加载完成 ===');
       }
+    };
 
-      if (storedFiles && storedFiles !== 'undefined' && storedFiles !== 'null') {
-        const filesArray = JSON.parse(storedFiles);
-        console.log('文件数组:', filesArray);
-        if (Array.isArray(filesArray)) {
-          console.log('设置书籍文件，数量:', filesArray.length);
-          setBookFiles(new Map(filesArray));
-        }
-      }
-    } catch (error) {
-      console.error('加载书籍数据失败:', error);
-      console.error('错误堆栈:', error instanceof Error ? error.stack : '');
-      // 清除无效数据
-      localStorage.removeItem(BOOKS_STORAGE_KEY);
-      localStorage.removeItem(BOOK_FILES_STORAGE_KEY);
-      // 使用示例书籍
-      console.log('清除数据后，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
-      setBooks(MOCK_BOOKS);
-      if (MOCK_BOOKS.length > 0) {
-        console.log('使用 MOCK_BOOKS[0]:', MOCK_BOOKS[0]);
-        setActiveBookId(MOCK_BOOKS[0].id);
-        setActiveChapterId(MOCK_BOOKS[0].chapters?.[0]?.id || '');
-      } else {
-        console.warn('MOCK_BOOKS 为空，没有默认书籍可用');
-      }
-    } finally {
-      setIsInitialLoad(false);
-      console.log('=== 书籍数据加载完成 ===');
-    }
+    loadData();
   }, []);
 
-  // 保存书籍到 localStorage
+  // 保存书籍到 IndexedDB
   useEffect(() => {
     if (!isInitialLoad && books.length > 0) {
-      try {
-        localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify(books));
-      } catch (error) {
+      storageService.saveBooks(books).catch(error => {
         console.error('保存书籍数据失败:', error);
-      }
+      });
     }
   }, [books, isInitialLoad]);
 
-  // 保存书籍文件内容到 localStorage
+  // 保存书籍文件内容到 IndexedDB
   useEffect(() => {
     if (!isInitialLoad && bookFiles.size > 0) {
-      try {
-        const filesArray = Array.from(bookFiles.entries());
-        localStorage.setItem(BOOK_FILES_STORAGE_KEY, JSON.stringify(filesArray));
-      } catch (error) {
+      storageService.saveBookFiles(bookFiles).catch(error => {
         console.error('保存书籍文件内容失败:', error);
-      }
+      });
     }
   }, [bookFiles, isInitialLoad]);
 
@@ -286,14 +256,17 @@ function AppContent() {
     }
   }, [isInitialLoad, manualSync]);
 
+  // 当切换书籍时，确保章节ID有效
   useEffect(() => {
-      if (activeBook && currentBookChapters.length > 0) {
+      if (activeBook && currentBookChapters.length > 0 && activeChapterId) {
           const exists = currentBookChapters.find(c => c.id === activeChapterId);
-          if (!exists) {
+          // 只有在章节ID确实无效时才重置，避免干扰阅读进度恢复
+          if (!exists && !isInitialLoad) {
+              console.log('当前章节ID无效，重置为第一章');
               setActiveChapterId(currentBookChapters[0].id);
           }
       }
-  }, [activeBookId, activeBook, currentBookChapters, activeChapterId]);
+  }, [activeBookId, activeBook, currentBookChapters, isInitialLoad]);
 
   const handleSelectBook = (id: string) => {
       setActiveBookId(id);
@@ -344,7 +317,7 @@ function AppContent() {
       }
   }, [activeBook, saveProgress]);
 
-  const handleDeleteBook = (id: string) => {
+  const handleDeleteBook = async (id: string) => {
       const newBooks = books.filter(b => b.id !== id);
       setBooks(newBooks);
 
@@ -354,6 +327,13 @@ function AppContent() {
           newFiles.delete(id);
           return newFiles;
       });
+
+      // 从 IndexedDB 删除
+      try {
+        await storageService.deleteBook(id);
+      } catch (error) {
+        console.error('从 IndexedDB 删除书籍失败:', error);
+      }
 
       if (activeBookId === id) {
           if (newBooks.length > 0) {
