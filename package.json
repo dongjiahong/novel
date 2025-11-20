@@ -9,14 +9,18 @@
     "preview": "vite preview --port 3000"
   },
   "dependencies": {
-    "react": "^19.2.0",
+    "jszip": "3.10.1",
     "lucide-react": "^0.554.0",
+    "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "jszip": "3.10.1"
+    "webdav": "^5.8.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

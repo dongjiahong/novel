@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen } from 'lucide-react';
-import { Book, Chapter } from '../types';
+import { Book, Chapter, SyncStatus } from '../types';
 import SettingsModal from './Settings';
 
 interface SidebarProps {
@@ -12,6 +12,8 @@ interface SidebarProps {
   onSelectChapter: (id: string) => void;
   onAddBook: (file: File) => void;
   onDeleteBook: (id: string) => void;
+  syncStatus?: SyncStatus;
+  onManualSync?: () => Promise<boolean>;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -22,7 +24,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectBook,
   onSelectChapter,
   onAddBook,
-  onDeleteBook
+  onDeleteBook,
+  syncStatus,
+  onManualSync
 }) => {
   const [isLibraryOpen, setLibraryOpen] = useState(true);
   const [isTocOpen, setTocOpen] = useState(true);
@@ -56,7 +60,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Settings Modal */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          syncStatus={syncStatus}
+          onManualSync={onManualSync}
+        />
+      )}
 
       {/* Middle Left: File Tree */}
       <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col overflow-y-auto no-scrollbar text-sm">

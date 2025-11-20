@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWordContext } from '../context/WordContext';
-import { X, Download, Trash2, BookOpen, CheckCircle } from 'lucide-react';
+import { X, Download, Trash2, BookOpen, CheckCircle, Cloud, RefreshCw, Loader2, Check } from 'lucide-react';
+import { webdavService } from '../services/webdavService';
+import { WebDAVConfig, SyncStatus } from '../types';
 
 interface SettingsProps {
   onClose: () => void;
+  syncStatus?: SyncStatus;
+  onManualSync?: () => Promise<boolean>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ onClose }) => {
+const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }) => {
   const {
     currentVocabularyLevel,
     availableLevels,
@@ -18,7 +22,56 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     currentBook
   } = useWordContext();
 
-  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'stats'>('vocabulary');
+  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'stats' | 'webdav'>('vocabulary');
+
+  // WebDAV 配置状态
+  const [webdavConfig, setWebdavConfig] = useState<WebDAVConfig>({
+    url: '',
+    username: '',
+    password: '',
+    autoSync: true,
+  });
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [configSaved, setConfigSaved] = useState(false);
+
+  // 加载 WebDAV 配置
+  useEffect(() => {
+    const config = webdavService.getConfig();
+    if (config) {
+      setWebdavConfig(config);
+    }
+  }, []);
+
+  // WebDAV 配置处理函数
+  const handleSaveWebDAVConfig = () => {
+    webdavService.saveConfig(webdavConfig);
+    setConfigSaved(true);
+    setTimeout(() => setConfigSaved(false), 2000);
+  };
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    // 先保存配置
+    webdavService.saveConfig(webdavConfig);
+
+    try {
+      const result = await webdavService.testConnection();
+      setTestResult(result ? 'success' : 'error');
+    } catch (error) {
+      setTestResult('error');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    if (onManualSync) {
+      await onManualSync();
+    }
+  };
 
   // 按书籍分组生词
   const newWordsByBook = React.useMemo(() => {
@@ -82,6 +135,17 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             }`}
           >
             统计
+          </button>
+          <button
+            onClick={() => setActiveTab('webdav')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+              activeTab === 'webdav'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <Cloud size={16} />
+            WebDAV
           </button>
         </div>
 
@@ -258,6 +322,171 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   <li>• 生词表可按书籍分类导出，方便复习</li>
                   <li>• 词汇等级可随时切换，立即生效</li>
                 </ul>
+              </div>
+            </div>
+          )}
+
+          {/* WebDAV 同步配置 */}
+          {activeTab === 'webdav' && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Cloud className="text-blue-600" size={24} />
+                <h3 className="text-lg font-semibold text-gray-800">WebDAV 同步配置</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-6">
+                配置 WebDAV 服务器，实现多设备数据同步（书籍、生词、阅读进度等）
+              </p>
+
+              <div className="space-y-4">
+                {/* 服务器 URL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    服务器 URL *
+                  </label>
+                  <input
+                    type="url"
+                    value={webdavConfig.url}
+                    onChange={(e) => setWebdavConfig({ ...webdavConfig, url: e.target.value })}
+                    placeholder="https://example.com/webdav"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* 用户名 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    用户名 *
+                  </label>
+                  <input
+                    type="text"
+                    value={webdavConfig.username}
+                    onChange={(e) => setWebdavConfig({ ...webdavConfig, username: e.target.value })}
+                    placeholder="username"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* 密码 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    密码 *
+                  </label>
+                  <input
+                    type="password"
+                    value={webdavConfig.password}
+                    onChange={(e) => setWebdavConfig({ ...webdavConfig, password: e.target.value })}
+                    placeholder="password"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* 自动同步开关 */}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="autoSync"
+                    checked={webdavConfig.autoSync}
+                    onChange={(e) => setWebdavConfig({ ...webdavConfig, autoSync: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="autoSync" className="text-sm text-gray-700">
+                    启用自动同步（数据变更时自动上传到服务器）
+                  </label>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={handleSaveWebDAVConfig}
+                    disabled={!webdavConfig.url || !webdavConfig.username}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    {configSaved ? <Check size={16} /> : null}
+                    {configSaved ? '已保存' : '保存配置'}
+                  </button>
+
+                  <button
+                    onClick={handleTestConnection}
+                    disabled={!webdavConfig.url || !webdavConfig.username || isTesting}
+                    className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    {isTesting ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} />
+                        测试中...
+                      </>
+                    ) : (
+                      '测试连接'
+                    )}
+                  </button>
+                </div>
+
+                {/* 测试结果 */}
+                {testResult && (
+                  <div
+                    className={`p-3 rounded-lg ${
+                      testResult === 'success'
+                        ? 'bg-green-50 border border-green-200 text-green-700'
+                        : 'bg-red-50 border border-red-200 text-red-700'
+                    }`}
+                  >
+                    {testResult === 'success'
+                      ? '✓ 连接成功！可以正常同步'
+                      : '✗ 连接失败，请检查配置信息'}
+                  </div>
+                )}
+
+                {/* 同步状态 */}
+                {syncStatus && (
+                  <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <h4 className="font-medium text-gray-800 mb-3">同步状态</h4>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {syncStatus === 'syncing' && (
+                          <>
+                            <Loader2 className="animate-spin text-blue-600" size={16} />
+                            <span className="text-sm text-blue-600">正在同步...</span>
+                          </>
+                        )}
+                        {syncStatus === 'success' && (
+                          <>
+                            <Check className="text-green-600" size={16} />
+                            <span className="text-sm text-green-600">同步成功</span>
+                          </>
+                        )}
+                        {syncStatus === 'error' && (
+                          <>
+                            <X className="text-red-600" size={16} />
+                            <span className="text-sm text-red-600">同步失败</span>
+                          </>
+                        )}
+                        {syncStatus === 'idle' && (
+                          <span className="text-sm text-gray-500">就绪</span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={handleManualSync}
+                        disabled={!webdavConfig.url || syncStatus === 'syncing'}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <RefreshCw size={14} />
+                        手动同步
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 功能说明 */}
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-medium text-gray-800 mb-2">同步说明</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• 同步内容：书籍文件、生词表、已掌握单词、阅读进度</li>
+                    <li>• 智能合并：多设备数据自动合并，不会丢失</li>
+                    <li>• 自动同步：启用后，数据变更时自动上传（3秒防抖）</li>
+                    <li>• 启动同步：打开应用时自动从服务器拉取最新数据</li>
+                  </ul>
+                </div>
               </div>
             </div>
           )}
