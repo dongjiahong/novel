@@ -1,12 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { webdavService } from '../services/webdavService';
 import { syncService } from '../services/syncService';
-import { SyncStatus, Book, SyncData } from '../types';
+import { SyncStatus, Book, BooksMetaData } from '../types';
 
 interface UseWebDAVSyncOptions {
   books: Book[];
   bookFiles: Map<string, string>;
-  onSyncComplete?: (data: SyncData) => void;
+  onSyncComplete?: (booksMeta: BooksMetaData) => void;
   autoSyncEnabled?: boolean;
 }
 
@@ -62,13 +62,13 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
       // 执行完整同步
       const result = await syncService.performFullSync(books, bookFiles);
 
-      if (result.success && result.mergedData) {
+      if (result.success && result.mergedBooksMeta) {
         setSyncStatus('success');
         setLastSyncTime(new Date().toISOString());
 
         // 通知同步完成
         if (onSyncComplete) {
-          onSyncComplete(result.mergedData);
+          onSyncComplete(result.mergedBooksMeta);
         }
 
         // 2秒后恢复为 idle 状态

@@ -15,14 +15,27 @@ class WebDAVService {
    * 保存 WebDAV 配置到 localStorage
    */
   saveConfig(config: WebDAVConfig): void {
+    console.log('保存配置前 - URL:', config.url);
+    console.log('当前页面协议:', typeof window !== 'undefined' ? window.location.protocol : 'unknown');
+
     // 如果当前页面是 HTTPS，自动将 HTTP URL 转换为 HTTPS
     // 这样可以避免浏览器的混合内容（Mixed Content）错误
     if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
       if (config.url.startsWith('http://')) {
         config.url = config.url.replace('http://', 'https://');
-        console.log('已将 WebDAV URL 从 HTTP 自动转换为 HTTPS 以避免混合内容错误');
+        console.log('✓ 已将 WebDAV URL 从 HTTP 自动转换为 HTTPS');
       }
     }
+
+    // 确保 URL 以 https:// 开头（如果当前页面是 HTTPS）
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+      if (!config.url.startsWith('https://') && !config.url.startsWith('http://')) {
+        config.url = 'https://' + config.url;
+        console.log('✓ 已为 URL 添加 https:// 前缀');
+      }
+    }
+
+    console.log('保存配置后 - URL:', config.url);
 
     this.config = config;
     localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
@@ -64,7 +77,18 @@ class WebDAVService {
       return;
     }
 
-    this.client = createClient(this.config.url, {
+    // 强制确保 URL 使用 HTTPS（解决 webdav 库可能降级的问题）
+    let url = this.config.url;
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+      if (url.startsWith('http://')) {
+        url = url.replace('http://', 'https://');
+        console.warn('⚠️ WebDAV URL 被强制转换为 HTTPS:', url);
+      }
+    }
+
+    console.log('初始化 WebDAV 客户端 - URL:', url);
+
+    this.client = createClient(url, {
       username: this.config.username,
       password: this.config.password,
     });

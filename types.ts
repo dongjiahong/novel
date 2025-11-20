@@ -66,7 +66,60 @@ export interface ReadingProgress {
   updatedAt: string; // ISO timestamp
 }
 
-// 同步数据结构
+// ============ 新的同步数据结构 ============
+
+// 书籍元数据（不包含章节内容，只包含基本信息）
+export interface BookMetadata {
+  id: string;
+  title: string;
+  author?: string;
+  addedAt: string; // ISO timestamp
+  chapterCount: number;
+  fileExtension: '.txt' | '.epub';
+}
+
+// 用户配置数据
+export interface UserConfig {
+  selectedVocabularyLevel: string;
+  userKnownWords: string[];
+  excludedWords: string[];
+  updatedAt: string; // ISO timestamp
+}
+
+// 书籍元数据列表
+export interface BooksMetaData {
+  books: BookMetadata[];
+  updatedAt: string; // ISO timestamp
+}
+
+// 生词表数据
+export interface NewWordsData {
+  words: NewWord[];
+  updatedAt: string; // ISO timestamp
+}
+
+// 阅读进度数据
+export interface ReadingProgressData {
+  progress: ReadingProgress[];
+  updatedAt: string; // ISO timestamp
+}
+
+// 同步元数据
+export interface SyncMetadata {
+  lastSyncAt: string; // ISO timestamp
+  deviceId: string;
+  // 记录各个数据文件的最后更新时间，用于增量同步
+  fileTimestamps?: {
+    config?: string;
+    booksMeta?: string;
+    newWords?: string;
+    readingProgress?: string;
+  };
+}
+
+// ============ 旧的同步数据结构（保留以便迁移）============
+
+// 同步数据结构（已废弃，保留用于数据迁移）
 export interface SyncData {
   books: Book[];
   newWords: NewWord[];
@@ -75,10 +128,4 @@ export interface SyncData {
   selectedVocabularyLevel: string;
   readingProgress: ReadingProgress[];
   updatedAt: string; // ISO timestamp
-}
-
-// 同步元数据
-export interface SyncMetadata {
-  lastSyncAt: string; // ISO timestamp
-  deviceId: string;
 }
