@@ -16,7 +16,7 @@ const FOOTER_HEIGHT = 72; // 底部翻页按钮高度
 const CONTENT_PADDING = 96; // 内容区域上下padding总和
 
 const Reader: React.FC<ReaderProps> = ({ chapter }) => {
-  const { checkIsKnown, newWords } = useWordContext();
+  const { checkIsKnown, newWords, dictionarySize } = useWordContext();
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
   const [currentPage, setCurrentPage] = useState(0);
   const [paragraphsPerPage, setParagraphsPerPage] = useState(8);
@@ -52,7 +52,8 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
           if (/[a-zA-Z]/.test(token)) {
             const cleanWord = normalizeWord(token);
             const isKnown = cleanWord ? checkIsKnown(cleanWord) : true;
-            const entry = cleanWord ? await lookupWord(cleanWord) : null;
+            const useLarge = dictionarySize === 'large';
+            const entry = cleanWord ? await lookupWord(cleanWord, useLarge) : null;
             const hasEntry = entry !== null;
 
             // 检查是否在生词表中（使用词形匹配）
@@ -93,7 +94,7 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     return () => {
       cancelled = true;
     };
-  }, [chapter.content, checkIsKnown, newWords]);
+  }, [chapter.content, checkIsKnown, newWords, dictionarySize]);
 
   // 创建一个 Set 来快速查找哪些单词应该被标注
   const [shouldAnnotateSet, setShouldAnnotateSet] = useState<Set<number>>(new Set());

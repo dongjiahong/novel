@@ -7,6 +7,8 @@ import { useNewWordsList } from '../hooks/useNewWordsList';
 interface WordContextType {
   // 词典相关
   isDictLoading: boolean;
+  dictionarySize: 'small' | 'large';
+  setDictionarySize: (size: 'small' | 'large') => void;
 
   // 词汇等级相关
   currentVocabularyLevel: VocabularyLevel | null;
@@ -37,6 +39,7 @@ const WordContext = createContext<WordContextType | undefined>(undefined);
 
 export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDictLoading, setIsDictLoading] = useState(true);
+  const [dictionarySize, setDictionarySizeState] = useState<'small' | 'large'>('small');
   const [userKnownWords, setUserKnownWords] = useState<Set<string>>(new Set());
   const [excludedWords, setExcludedWords] = useState<Set<string>>(new Set()); // 用户明确不认识的单词
   const [interactingWord, setInteractingWord] = useState<{ word: string; entry: DictionaryEntry; sentence?: string } | null>(null);
@@ -86,13 +89,14 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     try {
       const stored = localStorage.getItem('user_known_words');
-      if (stored) {
+      if (stored && stored !== 'undefined' && stored !== 'null') {
         const words = new Set(JSON.parse(stored));
         setUserKnownWords(words);
         console.log(`✅ 已加载 ${words.size} 个用户标记的已掌握单词`);
       }
     } catch (e) {
       console.error('Failed to load user known words', e);
+      localStorage.removeItem('user_known_words');
     }
   }, []);
 
@@ -100,14 +104,35 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     try {
       const stored = localStorage.getItem('excluded_words');
-      if (stored) {
+      if (stored && stored !== 'undefined' && stored !== 'null') {
         setExcludedWords(new Set(JSON.parse(stored)));
         console.log(`✅ 已加载用户排除的单词`);
       }
     } catch (e) {
       console.error('Failed to load excluded words', e);
+      localStorage.removeItem('excluded_words');
     }
   }, []);
+
+  // 从 LocalStorage 加载词典大小设置
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('dictionary_size');
+      if (stored && (stored === 'small' || stored === 'large')) {
+        setDictionarySizeState(stored);
+        console.log(`✅ 已加载词典大小设置: ${stored}`);
+      }
+    } catch (e) {
+      console.error('Failed to load dictionary size', e);
+    }
+  }, []);
+
+  // 设置词典大小
+  const setDictionarySize = (size: 'small' | 'large') => {
+    setDictionarySizeState(size);
+    localStorage.setItem('dictionary_size', size);
+    console.log(`📚 词典大小已设置为: ${size}`);
+  };
 
   /**
    * 标记单词为已掌握（用户手动标记）
@@ -227,6 +252,8 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <WordContext.Provider
       value={{
         isDictLoading,
+        dictionarySize,
+        setDictionarySize,
         currentVocabularyLevel: currentLevel,
         availableLevels,
         setVocabularyLevel,

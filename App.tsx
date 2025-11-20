@@ -57,21 +57,30 @@ function AppContent() {
       const storedBooks = localStorage.getItem(BOOKS_STORAGE_KEY);
       const storedFiles = localStorage.getItem(BOOK_FILES_STORAGE_KEY);
 
-      if (storedBooks) {
+      if (storedBooks && storedBooks !== 'undefined' && storedBooks !== 'null') {
         const loadedBooks = JSON.parse(storedBooks);
-        setBooks(loadedBooks);
+        if (Array.isArray(loadedBooks) && loadedBooks.length > 0) {
+          setBooks(loadedBooks);
 
-        // 如果有书籍，选择第一本
-        if (loadedBooks.length > 0 && !activeBookId) {
-          const firstBook = loadedBooks[0];
-          setActiveBookId(firstBook.id);
+          // 如果有书籍，选择第一本
+          if (!activeBookId) {
+            const firstBook = loadedBooks[0];
+            setActiveBookId(firstBook.id);
 
-          // 尝试从阅读进度恢复位置
-          const progress = getProgress(firstBook.id);
-          if (progress) {
-            setActiveChapterId(firstBook.chapters[progress.chapterIndex]?.id || firstBook.chapters[0]?.id);
-          } else if (firstBook.chapters.length > 0) {
-            setActiveChapterId(firstBook.chapters[0].id);
+            // 尝试从阅读进度恢复位置
+            const progress = getProgress(firstBook.id);
+            if (progress) {
+              setActiveChapterId(firstBook.chapters[progress.chapterIndex]?.id || firstBook.chapters[0]?.id);
+            } else if (firstBook.chapters.length > 0) {
+              setActiveChapterId(firstBook.chapters[0].id);
+            }
+          }
+        } else {
+          // 数据无效，使用示例书籍
+          setBooks(MOCK_BOOKS);
+          if (MOCK_BOOKS.length > 0) {
+            setActiveBookId(MOCK_BOOKS[0].id);
+            setActiveChapterId(MOCK_BOOKS[0].chapters[0]?.id || '');
           }
         }
       } else {
@@ -83,13 +92,23 @@ function AppContent() {
         }
       }
 
-      if (storedFiles) {
+      if (storedFiles && storedFiles !== 'undefined' && storedFiles !== 'null') {
         const filesArray = JSON.parse(storedFiles);
-        setBookFiles(new Map(filesArray));
+        if (Array.isArray(filesArray)) {
+          setBookFiles(new Map(filesArray));
+        }
       }
     } catch (error) {
       console.error('加载书籍数据失败:', error);
+      // 清除无效数据
+      localStorage.removeItem(BOOKS_STORAGE_KEY);
+      localStorage.removeItem(BOOK_FILES_STORAGE_KEY);
+      // 使用示例书籍
       setBooks(MOCK_BOOKS);
+      if (MOCK_BOOKS.length > 0) {
+        setActiveBookId(MOCK_BOOKS[0].id);
+        setActiveChapterId(MOCK_BOOKS[0].chapters[0]?.id || '');
+      }
     } finally {
       setIsInitialLoad(false);
     }

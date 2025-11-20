@@ -19,10 +19,12 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
     knownWords,
     newWords,
     exportNewWords,
-    currentBook
+    currentBook,
+    dictionarySize,
+    setDictionarySize
   } = useWordContext();
 
-  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'stats' | 'webdav'>('vocabulary');
+  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'webdav'>('vocabulary');
 
   // WebDAV 配置状态
   const [webdavConfig, setWebdavConfig] = useState<WebDAVConfig>({
@@ -127,16 +129,6 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
             )}
           </button>
           <button
-            onClick={() => setActiveTab('stats')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'stats'
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            统计
-          </button>
-          <button
             onClick={() => setActiveTab('webdav')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
               activeTab === 'webdav'
@@ -191,6 +183,60 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
                     </div>
                   </button>
                 ))}
+              </div>
+
+              {/* 词典大小选择 */}
+              <div className="mt-8 pt-8 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">词典大小</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  选择词典范围。small词典包含常用词汇，large词典包含更多生僻词汇。
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setDictionarySize('small')}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      dictionarySize === 'small'
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold text-gray-800">Small（默认）</h4>
+                        <p className="text-xs text-gray-500 mt-1">仅使用常用词典</p>
+                        <p className="text-xs text-blue-600 mt-2">
+                          推荐日常阅读使用
+                        </p>
+                      </div>
+                      {dictionarySize === 'small' && (
+                        <CheckCircle className="text-blue-500 flex-shrink-0" size={20} />
+                      )}
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setDictionarySize('large')}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      dictionarySize === 'large'
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold text-gray-800">Large</h4>
+                        <p className="text-xs text-gray-500 mt-1">包含常用词典 + 扩展词典</p>
+                        <p className="text-xs text-blue-600 mt-2">
+                          适合专业文献阅读
+                        </p>
+                      </div>
+                      {dictionarySize === 'large' && (
+                        <CheckCircle className="text-blue-500 flex-shrink-0" size={20} />
+                      )}
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -260,69 +306,6 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
                   ))}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* 统计信息 */}
-          {activeTab === 'stats' && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">学习统计</h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-600 font-medium">已掌握词汇</p>
-                  <p className="text-3xl font-bold text-blue-700 mt-2">
-                    {knownWords.size.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-blue-500 mt-1">
-                    包含等级词汇和手动标记
-                  </p>
-                </div>
-
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <p className="text-sm text-orange-600 font-medium">生词表总数</p>
-                  <p className="text-3xl font-bold text-orange-700 mt-2">
-                    {newWords.length.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-orange-500 mt-1">
-                    需要复习的单词
-                  </p>
-                </div>
-
-                {currentVocabularyLevel && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-sm text-green-600 font-medium">当前等级</p>
-                    <p className="text-xl font-bold text-green-700 mt-2">
-                      {currentVocabularyLevel.name}
-                    </p>
-                    <p className="text-xs text-green-500 mt-1">
-                      {currentVocabularyLevel.description}
-                    </p>
-                  </div>
-                )}
-
-                {currentBook && (
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <p className="text-sm text-purple-600 font-medium">当前书籍</p>
-                    <p className="text-sm font-bold text-purple-700 mt-2 truncate">
-                      {currentBook.title}
-                    </p>
-                    <p className="text-xs text-purple-500 mt-1">
-                      本书生词: {newWords.filter(w => w.bookId === currentBook.id).length}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <h4 className="font-medium text-gray-800 mb-2">功能说明</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• 橙色标注的单词表示生词，点击可查看详情</li>
-                  <li>• 已认识的单词不会显示注释，但可点击查看</li>
-                  <li>• 生词表可按书籍分类导出，方便复习</li>
-                  <li>• 词汇等级可随时切换，立即生效</li>
-                </ul>
-              </div>
             </div>
           )}
 

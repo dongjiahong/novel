@@ -16,7 +16,7 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   shouldAnnotate = true,
   paragraph = ''
 }) => {
-  const { checkIsKnown, setInteractingWord, checkIsInNewWords } = useWordContext();
+  const { checkIsKnown, setInteractingWord, checkIsInNewWords, dictionarySize } = useWordContext();
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +35,9 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 
     let cancelled = false;
 
-    lookupWord(cleanWord).then(result => {
+    // 根据词典大小设置决定是否使用 large 词典
+    const useLarge = dictionarySize === 'large';
+    lookupWord(cleanWord, useLarge).then(result => {
       if (!cancelled) {
         setEntry(result);
         setLoading(false);
@@ -45,7 +47,7 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [cleanWord, isWordChar]);
+  }, [cleanWord, isWordChar, dictionarySize]);
 
   // 从段落中提取包含该单词的句子
   const extractSentence = (para: string, targetWord: string): string => {
@@ -131,9 +133,9 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
     >
       {/* 悬浮注释 - 绝对定位在单词上方 */}
       <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-8px] flex flex-col items-center pointer-events-none z-10">
-        {/* 中文翻译 */}
+        {/* 中文翻译 - 显示前3个解释 */}
         <span className={`text-[9px] ${textColorClass} font-medium whitespace-nowrap leading-tight`}>
-          {entry.translation?.split(/[,;]/)[0].substring(0, 12) || '...'}
+          {entry.translation?.split(/[,;]/).slice(0, 3).join(', ').substring(0, 24) || '...'}
         </span>
         {/* 音标 */}
         {entry.phonetic && (

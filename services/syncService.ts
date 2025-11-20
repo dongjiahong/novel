@@ -67,8 +67,8 @@ class SyncService {
 
     return {
       selectedVocabularyLevel: selectedLevel,
-      userKnownWords: userKnownWordsStr ? JSON.parse(userKnownWordsStr) : [],
-      excludedWords: excludedWordsStr ? JSON.parse(excludedWordsStr) : [],
+      userKnownWords: (userKnownWordsStr && userKnownWordsStr !== 'undefined' && userKnownWordsStr !== 'null') ? JSON.parse(userKnownWordsStr) : [],
+      excludedWords: (excludedWordsStr && excludedWordsStr !== 'undefined' && excludedWordsStr !== 'null') ? JSON.parse(excludedWordsStr) : [],
       updatedAt: new Date().toISOString(),
     };
   }
@@ -196,7 +196,7 @@ class SyncService {
    */
   async collectLocalNewWords(): Promise<NewWordsData> {
     const newWordsStr = localStorage.getItem('new_words_list');
-    const newWords: NewWord[] = newWordsStr ? JSON.parse(newWordsStr) : [];
+    const newWords: NewWord[] = (newWordsStr && newWordsStr !== 'undefined' && newWordsStr !== 'null') ? JSON.parse(newWordsStr) : [];
 
     return {
       words: newWords,
@@ -254,7 +254,7 @@ class SyncService {
    */
   async collectLocalReadingProgress(): Promise<ReadingProgressData> {
     const progressStr = localStorage.getItem('reading_progress');
-    const progress: ReadingProgress[] = progressStr ? JSON.parse(progressStr) : [];
+    const progress: ReadingProgress[] = (progressStr && progressStr !== 'undefined' && progressStr !== 'null') ? JSON.parse(progressStr) : [];
 
     return {
       progress,

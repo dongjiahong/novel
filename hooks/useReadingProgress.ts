@@ -14,11 +14,13 @@ export function useReadingProgress() {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      if (stored && stored !== 'undefined' && stored !== 'null') {
         setProgressList(JSON.parse(stored));
       }
     } catch (error) {
       console.error('加载阅读进度失败:', error);
+      // 清除无效数据
+      localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
 

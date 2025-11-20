@@ -33,19 +33,25 @@ export const wordsMatch = async (word1: string, word2: string): Promise<boolean>
 };
 
 /**
- * 词典查询策略：优先使用 small 词典，找不到再查 large 词典
+ * 词典查询策略：优先使用 small 词典，找不到再查 large 词典（如果启用）
  * 这是主要的查询入口函数
+ * @param word 要查询的单词
+ * @param useLarge 是否使用 large 词典，默认为 true
  */
-export const lookupWord = async (word: string): Promise<DictionaryEntry | null> => {
+export const lookupWord = async (word: string, useLarge: boolean = true): Promise<DictionaryEntry | null> => {
   // 先在 small 词典中查找
   const smallResult = await lookupInDictionary(smallDictionary, word);
   if (smallResult) {
     return smallResult;
   }
 
-  // 如果 small 找不到，再查 large 词典
-  const largeResult = await lookupInDictionary(largeDictionary, word);
-  return largeResult;
+  // 如果 small 找不到，且启用了 large 词典，再查 large 词典
+  if (useLarge) {
+    const largeResult = await lookupInDictionary(largeDictionary, word);
+    return largeResult;
+  }
+
+  return null;
 };
 
 /**

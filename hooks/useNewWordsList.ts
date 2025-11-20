@@ -24,13 +24,16 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      if (stored && stored !== 'undefined' && stored !== 'null') {
         const parsed = JSON.parse(stored);
-        setNewWords(parsed);
-        console.log(`📖 已加载 ${parsed.length} 个生词`);
+        if (Array.isArray(parsed)) {
+          setNewWords(parsed);
+          console.log(`📖 已加载 ${parsed.length} 个生词`);
+        }
       }
     } catch (err) {
       console.error('Failed to load new words list:', err);
+      localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
 
