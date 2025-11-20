@@ -15,26 +15,12 @@ function AppContent() {
   const [isParsing, setIsParsing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { setCurrentBook } = useWordContext();
-
   const activeBook = books.find(b => b.id === activeBookId);
   const currentBookChapters = activeBook?.chapters || [];
 
   const currentChapter = currentBookChapters.find(c => c.id === activeChapterId)
                          || currentBookChapters[0]
                          || { id: 'empty', title: '无内容', content: '' };
-
-  // 当书籍切换时，更新 WordContext 中的当前书籍
-  useEffect(() => {
-    if (activeBook) {
-      setCurrentBook({
-        id: activeBook.id,
-        title: activeBook.title
-      });
-    } else {
-      setCurrentBook(null);
-    }
-  }, [activeBook, setCurrentBook]);
 
   useEffect(() => {
       if (activeBook && currentBookChapters.length > 0) {

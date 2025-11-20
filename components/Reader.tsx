@@ -16,7 +16,7 @@ const FOOTER_HEIGHT = 72; // 底部翻页按钮高度
 const CONTENT_PADDING = 96; // 内容区域上下padding总和
 
 const Reader: React.FC<ReaderProps> = ({ chapter }) => {
-  const { checkIsKnown, newWords, currentBook } = useWordContext();
+  const { checkIsKnown, newWords } = useWordContext();
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
   const [currentPage, setCurrentPage] = useState(0);
   const [paragraphsPerPage, setParagraphsPerPage] = useState(8);
@@ -27,9 +27,7 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     const words: { word: string; isNewWord: boolean; index: number }[] = [];
     let wordIndex = 0;
     const newWordIndices: number[] = [];
-
-    // 获取当前书籍的生词表单词
-    const newWordsInList = newWords.filter(nw => !currentBook || nw.bookId === currentBook.id);
+    const newWordsFoundInList = new Set<string>(); // 记录在生词表中找到的单词
 
     // 简单的单词提取（与 processText 逻辑一致）
     const paragraphs = chapter.content.split('\n');
@@ -45,7 +43,7 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
           const hasEntry = cleanWord ? lookupWord(cleanWord) !== null : false;
 
           // 检查是否在生词表中（使用词形匹配）
-          const inNewWordsList = cleanWord ? newWordsInList.some(nw => wordsMatch(cleanWord, nw.word)) : false;
+          const inNewWordsList = cleanWord ? newWords.some(nw => wordsMatch(cleanWord, nw.word)) : false;
 
           // 如果单词在生词表中，或者是未掌握且词典中有的单词，则标记为生词
           const isNewWord = (inNewWordsList || !isKnown) && hasEntry;
@@ -54,6 +52,9 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
 
           if (isNewWord) {
             newWordIndices.push(wordIndex);
+            if (inNewWordsList && cleanWord) {
+              newWordsFoundInList.add(cleanWord);
+            }
           }
 
           wordIndex++;
@@ -62,29 +63,30 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     });
 
     return { words, newWordIndices, totalNewWords: newWordIndices.length };
-  }, [chapter.content, checkIsKnown, newWords, currentBook]);
+  }, [chapter.content, checkIsKnown, newWords]);
 
   // 创建一个 Set 来快速查找哪些单词应该被标注
   const shouldAnnotateSet = useMemo(() => {
     const set = new Set<number>();
+    let fromListCount = 0; // 从生词表标注的数量
+    const fromListWords: Array<{word: string, index: number}> = []; // 从生词表标注的单词详情
 
     // 1. 标注前 annotatedNewWordsCount 个生词
-    for (let i = 0; i < Math.min(annotatedNewWordsCount, wordAnalysis.newWordIndices.length); i++) {
+    const batchCount = Math.min(annotatedNewWordsCount, wordAnalysis.newWordIndices.length);
+    for (let i = 0; i < batchCount; i++) {
       set.add(wordAnalysis.newWordIndices[i]);
     }
 
     // 2. 确保生词表中的所有单词都被标注（无论位置）
-    const newWordsInList = newWords.filter(nw => !currentBook || nw.bookId === currentBook.id);
-
     wordAnalysis.words.forEach((w, idx) => {
       const cleanWord = normalizeWord(w.word);
-      if (cleanWord && newWordsInList.some(nw => wordsMatch(cleanWord, nw.word))) {
+      if (cleanWord && newWords.some(nw => wordsMatch(cleanWord, nw.word))) {
         set.add(idx);
       }
     });
 
     return set;
-  }, [annotatedNewWordsCount, wordAnalysis.newWordIndices, wordAnalysis.words, newWords, currentBook]);
+  }, [annotatedNewWordsCount, wordAnalysis.newWordIndices, wordAnalysis.words, newWords]);
 
   // 根据窗口高度动态计算每页段落数
   useEffect(() => {
@@ -93,7 +95,6 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
       const availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING;
       const calculatedParagraphs = Math.max(3, Math.floor(availableHeight / PARAGRAPH_HEIGHT));
       setParagraphsPerPage(calculatedParagraphs);
-      console.log(`📏 窗口高度: ${windowHeight}px, 可用高度: ${availableHeight}px, 每页段落数: ${calculatedParagraphs}`);
     };
 
     // 初始计算
@@ -137,6 +138,10 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     let wordCount = 0;
 
     paragraphsUpToCurrentPage.forEach(paragraph => {
+      // 跳过空行和标题（与 wordAnalysis 保持一致）
+      if (!paragraph.trim()) return;
+      if (paragraph.trim().startsWith('#') || paragraph.trim().startsWith('**')) return;
+
       const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
       tokens.forEach(token => {
         if (/[a-zA-Z]/.test(token)) {
@@ -147,11 +152,7 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
 
     // 如果当前页的单词数超过已标注的数量，加载更多
     if (wordCount > annotatedNewWordsCount && annotatedNewWordsCount < wordAnalysis.totalNewWords) {
-      setAnnotatedNewWordsCount(prev => {
-        const next = Math.min(prev + BATCH_SIZE, wordAnalysis.totalNewWords);
-        console.log(`📝 翻页加载更多标注: ${prev} → ${next}`);
-        return next;
-      });
+      setAnnotatedNewWordsCount(prev => Math.min(prev + BATCH_SIZE, wordAnalysis.totalNewWords));
     }
   }, [currentPage, paragraphs, paragraphsPerPage, annotatedNewWordsCount, wordAnalysis.totalNewWords]);
 
@@ -162,6 +163,10 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     // 计算当前页之前的所有单词数（用于正确的单词索引）
     const paragraphsBeforeCurrentPage = paragraphs.slice(0, currentPage * paragraphsPerPage);
     paragraphsBeforeCurrentPage.forEach(paragraph => {
+      // 跳过空行和标题（与 wordAnalysis 保持一致）
+      if (!paragraph.trim()) return;
+      if (paragraph.trim().startsWith('#') || paragraph.trim().startsWith('**')) return;
+
       const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
       tokens.forEach(token => {
         if (/[a-zA-Z]/.test(token)) {
@@ -210,6 +215,7 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
                   word={token}
                   original={token}
                   shouldAnnotate={shouldAnnotate}
+                  paragraph={paragraph}
                 />
               );
             }
@@ -228,6 +234,7 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
     const end = start + paragraphsPerPage;
     return paragraphs.slice(start, end);
   }, [paragraphs, currentPage, paragraphsPerPage]);
+
 
   return (
     <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-white relative flex flex-col">

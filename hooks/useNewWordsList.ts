@@ -4,10 +4,9 @@ import { NewWord } from '../types';
 interface UseNewWordsListReturn {
   newWords: NewWord[];
   addNewWord: (word: NewWord) => void;
-  removeNewWord: (word: string, bookId: string) => void;
-  getNewWordsByBook: (bookId: string) => NewWord[];
-  clearNewWords: (bookId?: string) => void;
-  exportNewWords: (bookId?: string) => void;
+  removeNewWord: (word: string) => void;
+  clearNewWords: () => void;
+  exportNewWords: () => void;
   totalCount: number;
 }
 
@@ -51,19 +50,21 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
    */
   const addNewWord = useCallback((word: NewWord) => {
     setNewWords(prev => {
-      // 检查是否已存在（同一本书中的同一个单词）
+      // 检查是否已存在（同一个单词）
       const exists = prev.some(
-        w => w.word.toLowerCase() === word.word.toLowerCase() && w.bookId === word.bookId
+        w => w.word.toLowerCase() === word.word.toLowerCase()
       );
 
       if (exists) {
-        // 更新复习次数
+        // 更新复习次数和例句
         const updated = prev.map(w => {
-          if (w.word.toLowerCase() === word.word.toLowerCase() && w.bookId === word.bookId) {
+          if (w.word.toLowerCase() === word.word.toLowerCase()) {
             return {
               ...w,
               reviewCount: w.reviewCount + 1,
-              lastReviewedAt: new Date().toISOString()
+              lastReviewedAt: new Date().toISOString(),
+              // 如果有新的例句，更新例句
+              sentence: word.sentence || w.sentence
             };
           }
           return w;
@@ -74,6 +75,7 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
         // 添加新生词
         const updated = [...prev, word];
         saveToStorage(updated);
+        console.log(`➕ 添加生词 "${word.word}"`);
         return updated;
       }
     });
@@ -82,10 +84,10 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
   /**
    * 删除生词
    */
-  const removeNewWord = useCallback((word: string, bookId: string) => {
+  const removeNewWord = useCallback((word: string) => {
     setNewWords(prev => {
       const updated = prev.filter(
-        w => !(w.word.toLowerCase() === word.toLowerCase() && w.bookId === bookId)
+        w => w.word.toLowerCase() !== word.toLowerCase()
       );
       saveToStorage(updated);
       return updated;
@@ -93,61 +95,36 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
   }, [saveToStorage]);
 
   /**
-   * 获取特定书籍的生词
-   */
-  const getNewWordsByBook = useCallback((bookId: string): NewWord[] => {
-    return newWords.filter(w => w.bookId === bookId);
-  }, [newWords]);
-
-  /**
    * 清空生词表
    */
-  const clearNewWords = useCallback((bookId?: string) => {
-    setNewWords(prev => {
-      const updated = bookId
-        ? prev.filter(w => w.bookId !== bookId)
-        : [];
-      saveToStorage(updated);
-      return updated;
-    });
+  const clearNewWords = useCallback(() => {
+    setNewWords([]);
+    saveToStorage([]);
   }, [saveToStorage]);
 
   /**
    * 导出生词表为文本文件
    */
-  const exportNewWords = useCallback((bookId?: string) => {
-    const wordsToExport = bookId
-      ? newWords.filter(w => w.bookId === bookId)
-      : newWords;
-
-    if (wordsToExport.length === 0) {
+  const exportNewWords = useCallback(() => {
+    if (newWords.length === 0) {
       alert('没有可导出的生词');
       return;
     }
 
-    // 按书籍分组
-    const groupedByBook: { [bookTitle: string]: NewWord[] } = {};
-    wordsToExport.forEach(word => {
-      if (!groupedByBook[word.bookTitle]) {
-        groupedByBook[word.bookTitle] = [];
-      }
-      groupedByBook[word.bookTitle].push(word);
-    });
-
     // 生成文本内容
     let content = '# 生词表\n\n';
     content += `导出时间: ${new Date().toLocaleString('zh-CN')}\n`;
-    content += `总计: ${wordsToExport.length} 个生词\n\n`;
+    content += `总计: ${newWords.length} 个生词\n\n`;
 
-    Object.entries(groupedByBook).forEach(([bookTitle, words]) => {
-      content += `## ${bookTitle} (${words.length} 个生词)\n\n`;
-      words.forEach((word, index) => {
-        content += `${index + 1}. ${word.word}`;
-        if (word.phonetic) content += ` [${word.phonetic}]`;
-        if (word.translation) content += ` - ${word.translation}`;
-        content += `\n`;
-      });
-      content += '\n';
+    newWords.forEach((word, index) => {
+      content += `${index + 1}. ${word.word}`;
+      if (word.phonetic) content += ` [${word.phonetic}]`;
+      if (word.translation) content += ` - ${word.translation}`;
+      content += `\n`;
+      if (word.sentence) {
+        content += `   例句: ${word.sentence}\n`;
+      }
+      content += `\n`;
     });
 
     // 创建下载链接
@@ -155,22 +132,19 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = bookId
-      ? `${groupedByBook[Object.keys(groupedByBook)[0]][0].bookTitle}-生词表.txt`
-      : `生词表-${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `生词表-${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    console.log(`✅ 已导出 ${wordsToExport.length} 个生词`);
+    console.log(`✅ 已导出 ${newWords.length} 个生词`);
   }, [newWords]);
 
   return {
     newWords,
     addNewWord,
     removeNewWord,
-    getNewWordsByBook,
     clearNewWords,
     exportNewWords,
     totalCount: newWords.length

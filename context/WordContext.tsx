@@ -23,17 +23,14 @@ interface WordContextType {
   // 生词表管理
   newWords: NewWord[];
   addNewWord: (word: NewWord) => void;
-  removeNewWord: (word: string, bookId: string) => void;
-  getNewWordsByBook: (bookId: string) => NewWord[];
-  exportNewWords: (bookId?: string) => void;
-
-  // 当前书籍信息（用于生词表关联）
-  currentBook: { id: string; title: string } | null;
-  setCurrentBook: (book: { id: string; title: string } | null) => void;
+  removeNewWord: (word: string) => void;
+  clearNewWords: () => void;
+  exportNewWords: () => void;
+  checkIsInNewWords: (word: string) => boolean;
 
   // 单词弹窗交互
-  interactingWord: { word: string; entry: DictionaryEntry } | null;
-  setInteractingWord: (data: { word: string; entry: DictionaryEntry } | null) => void;
+  interactingWord: { word: string; entry: DictionaryEntry; sentence?: string } | null;
+  setInteractingWord: (data: { word: string; entry: DictionaryEntry; sentence?: string } | null) => void;
 }
 
 const WordContext = createContext<WordContextType | undefined>(undefined);
@@ -42,8 +39,7 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isDictLoading, setIsDictLoading] = useState(true);
   const [userKnownWords, setUserKnownWords] = useState<Set<string>>(new Set());
   const [excludedWords, setExcludedWords] = useState<Set<string>>(new Set()); // 用户明确不认识的单词
-  const [interactingWord, setInteractingWord] = useState<{ word: string; entry: DictionaryEntry } | null>(null);
-  const [currentBook, setCurrentBook] = useState<{ id: string; title: string } | null>(null);
+  const [interactingWord, setInteractingWord] = useState<{ word: string; entry: DictionaryEntry; sentence?: string } | null>(null);
 
   // 使用词汇等级 hook
   const {
@@ -59,9 +55,10 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
     newWords,
     addNewWord,
     removeNewWord,
-    getNewWordsByBook,
+    clearNewWords,
     exportNewWords
   } = useNewWordsList();
+
 
   // 合并词汇等级的已掌握单词和用户手动标记的已掌握单词
   const knownWords = React.useMemo(() => {
@@ -90,8 +87,9 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const stored = localStorage.getItem('user_known_words');
       if (stored) {
-        setUserKnownWords(new Set(JSON.parse(stored)));
-        console.log(`✅ 已加载用户标记的已掌握单词`);
+        const words = new Set(JSON.parse(stored));
+        setUserKnownWords(words);
+        console.log(`✅ 已加载 ${words.size} 个用户标记的已掌握单词`);
       }
     } catch (e) {
       console.error('Failed to load user known words', e);
@@ -217,6 +215,14 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
+  /**
+   * 检查单词是否在生词表中
+   */
+  const checkIsInNewWords = (word: string) => {
+    const lower = word.toLowerCase();
+    return newWords.some(w => w.word.toLowerCase() === lower);
+  };
+
   return (
     <WordContext.Provider
       value={{
@@ -232,10 +238,9 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newWords,
         addNewWord,
         removeNewWord,
-        getNewWordsByBook,
+        clearNewWords,
         exportNewWords,
-        currentBook,
-        setCurrentBook,
+        checkIsInNewWords,
         interactingWord,
         setInteractingWord
       }}

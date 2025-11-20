@@ -38,8 +38,7 @@ export interface NewWord {
   word: string;
   translation?: string;
   phonetic?: string;
-  bookId: string;
-  bookTitle: string;
+  sentence?: string; // 例句：单词所在的句子
   firstSeenAt: string; // ISO timestamp
   reviewCount: number;
   lastReviewedAt?: string;

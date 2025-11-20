@@ -9,14 +9,16 @@ export const WordModal: React.FC = () => {
     markAsKnown,
     unmarkAsKnown,
     addNewWord,
-    currentBook,
-    checkIsKnown
+    removeNewWord,
+    checkIsKnown,
+    checkIsInNewWords
   } = useWordContext();
 
   if (!interactingWord) return null;
 
-  const { word, entry } = interactingWord;
+  const { word, entry, sentence } = interactingWord;
   const isKnown = checkIsKnown(word);
+  const isInNewWords = checkIsInNewWords(word);
 
   // 标记为已认识
   const handleKnown = () => {
@@ -32,17 +34,27 @@ export const WordModal: React.FC = () => {
 
   // 添加到生词表
   const handleAddToNewWords = () => {
-    if (currentBook) {
-      addNewWord({
-        word,
-        translation: entry.translation,
-        phonetic: entry.phonetic,
-        bookId: currentBook.id,
-        bookTitle: currentBook.title,
-        firstSeenAt: new Date().toISOString(),
-        reviewCount: 0
-      });
+    // 如果单词被标记为"已认识"，先取消该状态（因为添加到生词表意味着还需要学习）
+    if (isKnown) {
+      unmarkAsKnown(word);
     }
+
+    const newWordData = {
+      word,
+      translation: entry.translation,
+      phonetic: entry.phonetic,
+      sentence: sentence || undefined, // 添加例句
+      firstSeenAt: new Date().toISOString(),
+      reviewCount: 0
+    };
+
+    addNewWord(newWordData);
+    setInteractingWord(null);
+  };
+
+  // 从生词表移除
+  const handleRemoveFromNewWords = () => {
+    removeNewWord(word);
     setInteractingWord(null);
   };
 
@@ -87,7 +99,18 @@ export const WordModal: React.FC = () => {
             </p>
           </div>
 
-          {!isKnown && (
+          {sentence && (
+            <div className="mb-6">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                例句 / Example
+              </span>
+              <p className="text-gray-600 text-sm mt-2 leading-relaxed italic border-l-2 border-blue-300 pl-3">
+                {sentence}
+              </p>
+            </div>
+          )}
+
+          {!isKnown && !isInNewWords && (
             <div className="mb-6 p-3 bg-orange-50 border border-orange-200 rounded-lg">
               <p className="text-sm text-orange-700">
                 这是一个生词，你可以选择将其添加到生词表进行复习，或标记为已认识。
@@ -95,9 +118,17 @@ export const WordModal: React.FC = () => {
             </div>
           )}
 
+          {isInNewWords && (
+            <div className="mb-6 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-sm text-purple-700">
+                ✓ 该单词已在生词表中
+              </p>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex flex-col gap-2">
-            {!isKnown && (
+            {!isInNewWords ? (
               <button
                 onClick={handleAddToNewWords}
                 className="w-full py-2.5 px-4 rounded-lg bg-orange-600 text-white font-medium hover:bg-orange-700 shadow-md shadow-orange-200 transition-all flex items-center justify-center gap-2"
@@ -105,6 +136,15 @@ export const WordModal: React.FC = () => {
               >
                 <BookMarked size={16} />
                 添加到生词表
+              </button>
+            ) : (
+              <button
+                onClick={handleRemoveFromNewWords}
+                className="w-full py-2.5 px-4 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 shadow-md shadow-purple-200 transition-all flex items-center justify-center gap-2"
+                title="从生词表中移除"
+              >
+                <XCircle size={16} />
+                从生词表移除
               </button>
             )}
 
@@ -138,12 +178,6 @@ export const WordModal: React.FC = () => {
               </button>
             </div>
           </div>
-
-          {currentBook && (
-            <p className="text-xs text-gray-400 mt-4 text-center">
-              当前书籍：{currentBook.title}
-            </p>
-          )}
         </div>
       </div>
     </div>

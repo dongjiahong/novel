@@ -6,25 +6,55 @@ interface AnnotatedWordProps {
   word: string;
   original: string;
   shouldAnnotate?: boolean; // 控制是否应该标注（用于分批加载）
+  paragraph?: string; // 单词所在的段落，用于提取例句
 }
 
 export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   word,
   original,
-  shouldAnnotate = true
+  shouldAnnotate = true,
+  paragraph = ''
 }) => {
-  const { checkIsKnown, setInteractingWord } = useWordContext();
+  const { checkIsKnown, setInteractingWord, checkIsInNewWords } = useWordContext();
 
   // 标准化单词并查询词典
   const cleanWord = normalizeWord(word);
   const entry = cleanWord ? lookupWord(cleanWord) : null;
   const isKnown = cleanWord ? checkIsKnown(cleanWord) : true;
+  const isInNewWords = cleanWord ? checkIsInNewWords(cleanWord) : false;
   const isWordChar = /[a-zA-Z]/.test(word);
+
+  // 从段落中提取包含该单词的句子
+  const extractSentence = (para: string, targetWord: string): string => {
+    if (!para || !targetWord) return '';
+
+    // 按句子分割（简单处理：按 . ! ? 分割）
+    const sentences = para.split(/([.!?]+\s+)/);
+    let fullSentence = '';
+
+    for (let i = 0; i < sentences.length; i++) {
+      const sentence = sentences[i];
+      // 检查句子是否包含目标单词（忽略大小写）
+      const wordRegex = new RegExp(`\\b${targetWord}\\b`, 'i');
+      if (wordRegex.test(sentence)) {
+        // 找到包含单词的句子，拼接完整句子（包括标点）
+        fullSentence = sentence;
+        if (i + 1 < sentences.length && /^[.!?]+\s*$/.test(sentences[i + 1])) {
+          fullSentence += sentences[i + 1];
+        }
+        break;
+      }
+    }
+
+    return fullSentence.trim();
+  };
+
 
   // 点击处理：显示单词详情弹窗
   const handleClick = () => {
     if (entry && isWordChar) {
-      setInteractingWord({ word: cleanWord, entry });
+      const sentence = extractSentence(paragraph, cleanWord);
+      setInteractingWord({ word: cleanWord, entry, sentence });
     }
   };
 
@@ -53,9 +83,10 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 
   // 4. 如果是生词但不应该标注（性能优化），渲染为普通文本
   if (!shouldAnnotate) {
+    const hoverBgClass = isInNewWords ? 'hover:bg-purple-50' : 'hover:bg-orange-50';
     return (
       <span
-        className="cursor-pointer hover:bg-orange-50 rounded px-0.5 transition-colors"
+        className={`cursor-pointer ${hoverBgClass} rounded px-0.5 transition-colors`}
         onClick={handleClick}
       >
         {original}
@@ -64,16 +95,21 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   }
 
   // 5. 生词：显示完整标注（悬浮样式）
+  // 区分普通生词（橙色）和生词表中的生词（紫色）
+  const annotationColor = isInNewWords ? 'purple' : 'orange';
+  const textColorClass = isInNewWords ? 'text-purple-600' : 'text-orange-600';
+  const hoverColorClass = isInNewWords ? 'hover:text-purple-700' : 'hover:text-orange-700';
+
   return (
     <span
       className="relative inline-block cursor-pointer group select-text"
       onClick={handleClick}
-      title="点击查看详情"
+      title={isInNewWords ? "生词表 - 点击查看详情" : "点击查看详情"}
     >
       {/* 悬浮注释 - 绝对定位在单词上方 */}
       <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-2px] flex flex-col items-center pointer-events-none z-10">
         {/* 中文翻译 */}
-        <span className="text-[9px] text-orange-600 font-medium whitespace-nowrap leading-tight">
+        <span className={`text-[9px] ${textColorClass} font-medium whitespace-nowrap leading-tight`}>
           {entry.translation?.split(/[,;]/)[0].substring(0, 12) || '...'}
         </span>
         {/* 音标 */}
@@ -84,8 +120,8 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
         )}
       </span>
 
-      {/* 英文单词 - 生词用橙色文字 */}
-      <span className="text-orange-600 font-serif text-lg hover:text-orange-700 transition-colors">
+      {/* 英文单词 - 生词用橙色，生词表中的用紫色 */}
+      <span className={`${textColorClass} font-serif text-lg ${hoverColorClass} transition-colors`}>
         {word}
       </span>
     </span>
