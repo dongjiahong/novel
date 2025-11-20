@@ -150,6 +150,11 @@ function AppContent() {
                          || currentBookChapters[0]
                          || { id: 'empty', title: '无内容', content: '' };
 
+  // 获取当前章节的索引和初始页码
+  const currentChapterIndex = currentBookChapters.findIndex(c => c.id === activeChapterId);
+  const progress = activeBookId ? getProgress(activeBookId) : null;
+  const initialPage = (progress && progress.chapterIndex === currentChapterIndex) ? progress.paragraphIndex : 0;
+
   // 从 localStorage 加载书籍和文件内容
   useEffect(() => {
     console.log('=== 开始加载书籍数据 ===');
@@ -319,11 +324,25 @@ function AppContent() {
                   activeBook.title,
                   chapterIndex,
                   chapter.title,
-                  0 // 段落索引，这里简化为 0
+                  0 // 切换章节时从第一页开始
               );
           }
       }
   };
+
+  // 处理阅读进度保存（翻页时调用）
+  const handleSaveProgress = useCallback((chapterIndex: number, pageIndex: number) => {
+      if (activeBook && activeBook.chapters[chapterIndex]) {
+          const chapter = activeBook.chapters[chapterIndex];
+          saveProgress(
+              activeBook.id,
+              activeBook.title,
+              chapterIndex,
+              chapter.title,
+              pageIndex
+          );
+      }
+  }, [activeBook, saveProgress]);
 
   const handleDeleteBook = (id: string) => {
       const newBooks = books.filter(b => b.id !== id);
@@ -489,8 +508,15 @@ function AppContent() {
             <button className="text-gray-500">Menu</button>
          </div>
 
-         {activeBookId ? (
-             <Reader chapter={currentChapter} />
+         {activeBookId && activeBook ? (
+             <Reader
+                 chapter={currentChapter}
+                 bookId={activeBook.id}
+                 bookTitle={activeBook.title}
+                 chapterIndex={currentChapterIndex >= 0 ? currentChapterIndex : 0}
+                 onSaveProgress={handleSaveProgress}
+                 initialPage={initialPage}
+             />
          ) : (
              <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-2">
                  <BookOpen size={48} className="text-gray-200" />

@@ -65,8 +65,8 @@ const Sidebar: React.FC<SidebarProps> = ({
            onClick={handleSyncClick}
            className={`p-2 transition-colors rounded-md ${
              syncStatus === 'syncing'
-               ? 'text-blue-600 bg-blue-50 animate-spin'
-               : 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700'
+               ? 'text-orange-600 bg-orange-50 animate-spin'
+               : 'text-orange-600 bg-orange-50 hover:bg-orange-100 hover:text-orange-700'
            }`}
            title="手动同步"
            disabled={syncStatus === 'syncing'}

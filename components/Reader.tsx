@@ -7,6 +7,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ReaderProps {
   chapter: Chapter;
+  bookId: string;
+  bookTitle: string;
+  chapterIndex: number;
+  onSaveProgress: (chapterIndex: number, pageIndex: number) => void;
+  initialPage?: number;
 }
 
 const BATCH_SIZE = 500; // 每批标注500个生词
@@ -15,10 +20,10 @@ const HEADER_HEIGHT = 50; // 顶部标题栏高度
 const FOOTER_HEIGHT = 72; // 底部翻页按钮高度
 const CONTENT_PADDING = 96; // 内容区域上下padding总和
 
-const Reader: React.FC<ReaderProps> = ({ chapter }) => {
+const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterIndex, onSaveProgress, initialPage = 0 }) => {
   const { checkIsKnown, newWords, dictionarySize } = useWordContext();
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [paragraphsPerPage, setParagraphsPerPage] = useState(8);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -157,8 +162,8 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
   // 重置页码和标注计数（章节切换时）
   useEffect(() => {
     setAnnotatedNewWordsCount(BATCH_SIZE);
-    setCurrentPage(0);
-  }, [chapter.id]);
+    setCurrentPage(initialPage);
+  }, [chapter.id, initialPage]);
 
   // 计算段落总数和总页数
   const paragraphs = useMemo(() => {
@@ -170,13 +175,17 @@ const Reader: React.FC<ReaderProps> = ({ chapter }) => {
   // 翻页函数
   const goToNextPage = () => {
     if (currentPage < totalPages - 1) {
-      setCurrentPage(currentPage + 1);
+      const newPage = currentPage + 1;
+      setCurrentPage(newPage);
+      onSaveProgress(chapterIndex, newPage);
     }
   };
 
   const goToPrevPage = () => {
     if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
+      const newPage = currentPage - 1;
+      setCurrentPage(newPage);
+      onSaveProgress(chapterIndex, newPage);
     }
   };
 
