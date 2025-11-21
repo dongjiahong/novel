@@ -399,6 +399,10 @@ class SyncService {
     localStorage.setItem('selected_vocabulary_level', config.selectedVocabularyLevel);
     localStorage.setItem('user_known_words', JSON.stringify(config.userKnownWords));
     localStorage.setItem('excluded_words', JSON.stringify(config.excludedWords));
+
+    // 触发自定义事件通知配置已更新
+    window.dispatchEvent(new CustomEvent('sync-config-updated'));
+    console.log('📢 已触发配置更新事件');
   }
 
   /**

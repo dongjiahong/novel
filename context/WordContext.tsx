@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { DictionaryEntry, VocabularyLevel, NewWord } from '../types';
 import { loadDictionary } from '../services/dictionaryService';
 import { useVocabularyLevel } from '../hooks/useVocabularyLevel';
@@ -85,34 +85,63 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
     load();
   }, []);
 
-  // 从 LocalStorage 加载用户手动标记的已掌握单词
-  useEffect(() => {
+  // 重新加载配置的函数
+  const reloadConfigFromStorage = useCallback(() => {
+    console.log('🔄 重新加载用户配置...');
+
+    // 重新加载已掌握单词
     try {
       const stored = localStorage.getItem('user_known_words');
       if (stored && stored !== 'undefined' && stored !== 'null') {
         const words = new Set(JSON.parse(stored));
         setUserKnownWords(words);
-        console.log(`✅ 已加载 ${words.size} 个用户标记的已掌握单词`);
+        console.log(`✅ 已重新加载 ${words.size} 个用户标记的已掌握单词`);
+      } else {
+        setUserKnownWords(new Set());
+        console.log(`✅ 清空用户标记的已掌握单词`);
       }
     } catch (e) {
-      console.error('Failed to load user known words', e);
+      console.error('Failed to reload user known words', e);
       localStorage.removeItem('user_known_words');
+      setUserKnownWords(new Set());
     }
-  }, []);
 
-  // 从 LocalStorage 加载用户排除的单词
-  useEffect(() => {
+    // 重新加载排除的单词
     try {
       const stored = localStorage.getItem('excluded_words');
       if (stored && stored !== 'undefined' && stored !== 'null') {
-        setExcludedWords(new Set(JSON.parse(stored)));
-        console.log(`✅ 已加载用户排除的单词`);
+        const words = new Set(JSON.parse(stored));
+        setExcludedWords(words);
+        console.log(`✅ 已重新加载 ${words.size} 个用户排除的单词`);
+      } else {
+        setExcludedWords(new Set());
+        console.log(`✅ 清空用户排除的单词`);
       }
     } catch (e) {
-      console.error('Failed to load excluded words', e);
+      console.error('Failed to reload excluded words', e);
       localStorage.removeItem('excluded_words');
+      setExcludedWords(new Set());
     }
   }, []);
+
+  // 从 LocalStorage 加载用户手动标记的已掌握单词
+  useEffect(() => {
+    reloadConfigFromStorage();
+  }, [reloadConfigFromStorage]);
+
+  // 监听同步完成事件，重新加载配置
+  useEffect(() => {
+    const handleSyncComplete = () => {
+      console.log('📥 收到同步完成事件，重新加载配置');
+      reloadConfigFromStorage();
+    };
+
+    window.addEventListener('sync-config-updated', handleSyncComplete);
+
+    return () => {
+      window.removeEventListener('sync-config-updated', handleSyncComplete);
+    };
+  }, [reloadConfigFromStorage]);
 
   // 从 LocalStorage 加载词典大小设置
   useEffect(() => {
