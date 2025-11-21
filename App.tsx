@@ -129,8 +129,31 @@ function AppContent() {
       console.log('没有需要下载的新书籍');
     }
 
+    // 同步完成后，检查当前打开的书籍是否有更新的阅读进度
+    if (activeBookId) {
+      // 等待一小段时间让 progressList 更新
+      setTimeout(() => {
+        const currentBook = books.find(b => b.id === activeBookId);
+        if (!currentBook) return;
+
+        const updatedProgress = getProgress(activeBookId);
+        if (updatedProgress) {
+          const currentChapters = currentBook.chapters || [];
+          const currentChapterIdx = currentChapters.findIndex(c => c.id === activeChapterId);
+          // 如果同步的进度与当前章节不同，则更新到同步的进度
+          if (updatedProgress.chapterIndex !== currentChapterIdx) {
+            console.log(`📖 应用同步后的阅读进度: 章节 ${updatedProgress.chapterIndex}`);
+            const targetChapter = currentBook.chapters[updatedProgress.chapterIndex];
+            if (targetChapter) {
+              setActiveChapterId(targetChapter.id);
+            }
+          }
+        }
+      }, 100);
+    }
+
     console.log('同步完成回调处理完成');
-  }, [books, bookFiles, activeBookId, getProgress]);
+  }, [books, bookFiles, activeBookId, activeChapterId, getProgress]);
 
   // WebDAV 同步 hook
   const { syncStatus, syncProgress, lastSyncTime, syncError, manualSync, autoSync, isConfigured } = useWebDAVSync({
@@ -173,8 +196,8 @@ function AppContent() {
           // 如果有书籍，选择第一本
           if (!activeBookId) {
             const firstBook = loadedBooks[0];
-            console.log('第一本书:', firstBook);
-            console.log('第一本书的章节:', firstBook?.chapters);
+            //console.log('第一本书:', firstBook);
+            //console.log('第一本书的章节:', firstBook?.chapters);
             console.log('第一本书的章节数量:', firstBook?.chapters?.length);
 
             if (firstBook && firstBook.id) {

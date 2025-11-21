@@ -417,6 +417,10 @@ class SyncService {
    */
   saveReadingProgressToLocal(progressData: ReadingProgressData): void {
     localStorage.setItem('reading_progress', JSON.stringify(progressData.progress));
+
+    // 触发自定义事件通知阅读进度已更新
+    window.dispatchEvent(new CustomEvent('sync-progress-updated'));
+    console.log('📢 已触发阅读进度更新事件');
   }
 
   /**

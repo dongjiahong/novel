@@ -11,11 +11,13 @@ export function useReadingProgress() {
   const [progressList, setProgressList] = useState<ReadingProgress[]>([]);
 
   // 从 localStorage 加载进度
-  useEffect(() => {
+  const loadProgress = useCallback(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored && stored !== 'undefined' && stored !== 'null') {
-        setProgressList(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        console.log('🔄 重新加载阅读进度:', parsed);
+        setProgressList(parsed);
       }
     } catch (error) {
       console.error('加载阅读进度失败:', error);
@@ -23,6 +25,25 @@ export function useReadingProgress() {
       localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
+
+  // 初始加载
+  useEffect(() => {
+    loadProgress();
+  }, [loadProgress]);
+
+  // 监听同步事件，自动重新加载
+  useEffect(() => {
+    const handleSyncUpdate = () => {
+      console.log('📥 收到阅读进度同步更新事件');
+      loadProgress();
+    };
+
+    window.addEventListener('sync-progress-updated', handleSyncUpdate);
+
+    return () => {
+      window.removeEventListener('sync-progress-updated', handleSyncUpdate);
+    };
+  }, [loadProgress]);
 
   /**
    * 保存阅读进度
