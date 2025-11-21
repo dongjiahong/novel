@@ -20,23 +20,48 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [isConfigured, setIsConfigured] = useState(webdavService.isConfigured());
 
   // 防抖定时器
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSyncingRef = useRef(false);
 
   /**
+   * 监听配置变化
+   */
+  useEffect(() => {
+    const checkConfig = () => {
+      const configured = webdavService.isConfigured();
+      setIsConfigured(configured);
+    };
+
+    // 初始检查
+    checkConfig();
+
+    // 监听 storage 事件（当其他标签页修改 localStorage 时触发）
+    window.addEventListener('storage', checkConfig);
+
+    // 监听自定义事件（当前标签页修改配置时触发）
+    window.addEventListener('webdav-config-changed', checkConfig);
+
+    return () => {
+      window.removeEventListener('storage', checkConfig);
+      window.removeEventListener('webdav-config-changed', checkConfig);
+    };
+  }, []);
+
+  /**
    * 加载上次同步时间
    */
   useEffect(() => {
     const loadLastSyncTime = async () => {
-      if (webdavService.isConfigured()) {
+      if (isConfigured) {
         const time = await syncService.getLastSyncTime();
         setLastSyncTime(time);
       }
     };
     loadLastSyncTime();
-  }, []);
+  }, [isConfigured]);
 
   /**
    * 执行同步
@@ -148,6 +173,6 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
     manualSync,
     autoSync,
     testConnection,
-    isConfigured: webdavService.isConfigured(),
+    isConfigured,
   };
 }

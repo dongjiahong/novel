@@ -48,6 +48,8 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
   // WebDAV 配置处理函数
   const handleSaveWebDAVConfig = () => {
     webdavService.saveConfig(webdavConfig);
+    // 触发配置变化事件
+    window.dispatchEvent(new Event('webdav-config-changed'));
     setConfigSaved(true);
     setTimeout(() => setConfigSaved(false), 2000);
   };
@@ -58,6 +60,8 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
 
     // 先保存配置
     webdavService.saveConfig(webdavConfig);
+    // 触发配置变化事件
+    window.dispatchEvent(new Event('webdav-config-changed'));
 
     try {
       const result = await webdavService.testConnection();

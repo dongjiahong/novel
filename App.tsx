@@ -20,7 +20,6 @@ function AppContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [downloadingBook, setDownloadingBook] = useState<string | null>(null);
-  const emptyStateFileInputRef = useRef<HTMLInputElement>(null);
 
   // 标记是否已执行过启动同步，防止重复触发
   const hasInitialSyncRef = useRef(false);
@@ -517,53 +516,24 @@ function AppContent() {
                  isWebDAVConfigured={isConfigured}
              />
          ) : (
-             <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-4">
-                 <BookOpen size={64} className="text-gray-300" />
-                 <p className="text-lg text-gray-500">欢迎使用 E-Book Lingo Reader</p>
-                 <p className="text-sm text-gray-400">上传 EPUB 或 TXT 文件开始阅读，或从 WebDAV 同步书籍</p>
-                 <div className="flex gap-3 mt-4">
-                   <button
-                     onClick={() => emptyStateFileInputRef.current?.click()}
-                     className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md"
-                   >
-                     <BookOpen size={20} />
-                     <span>上传图书</span>
-                   </button>
-                   <button
-                     onClick={() => {
-                       if (!isConfigured) {
-                         alert('请先在设置中配置 WebDAV 服务器信息');
-                       } else {
-                         manualSync();
-                       }
-                     }}
-                     disabled={syncStatus === 'syncing'}
-                     className={`px-6 py-3 rounded-lg transition-colors flex items-center gap-2 shadow-md ${
-                       syncStatus === 'syncing'
-                         ? 'bg-gray-400 text-white cursor-not-allowed'
-                         : 'bg-green-600 text-white hover:bg-green-700'
-                     }`}
-                   >
-                     <RefreshCw size={20} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
-                     <span>{syncStatus === 'syncing' ? '同步中...' : '同步书籍'}</span>
-                   </button>
-                 </div>
-                 <input
-                   type="file"
-                   ref={emptyStateFileInputRef}
-                   className="hidden"
-                   accept=".epub,.pdf,.txt"
-                   onChange={(e) => {
-                     const file = e.target.files?.[0];
-                     if (file) {
-                       handleAddBook(file);
-                     }
-                     if (emptyStateFileInputRef.current) {
-                       emptyStateFileInputRef.current.value = '';
-                     }
-                   }}
-                 />
-             </div>
+             <Reader
+                 chapter={currentChapter}
+                 bookId={''}
+                 bookTitle={''}
+                 chapterIndex={0}
+                 onSaveProgress={handleSaveProgress}
+                 initialPage={0}
+                 books={books}
+                 chapters={[]}
+                 activeChapterId={''}
+                 onSelectBook={handleSelectBook}
+                 onSelectChapter={handleSelectChapter}
+                 onAddBook={handleAddBook}
+                 onDeleteBook={handleDeleteBook}
+                 syncStatus={syncStatus}
+                 onManualSync={manualSync}
+                 isWebDAVConfigured={isConfigured}
+             />
          )}
       </div>
     </div>

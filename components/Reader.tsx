@@ -431,6 +431,9 @@ const Reader: React.FC<ReaderProps> = ({
     );
   };
 
+  // 检查是否有活动书籍
+  const hasActiveBook = bookId && bookId !== '';
+
   return (
     <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-white relative flex">
       {/* 桌面端侧边栏 - 只在 md 以上屏幕显示 */}
@@ -463,6 +466,7 @@ const Reader: React.FC<ReaderProps> = ({
         </div>
 
         {/* 顶部标题栏 - 移动端显示下拉菜单，桌面端只显示信息和操作按钮 */}
+        {hasActiveBook && (
         <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center shadow-sm flex-shrink-0">
           {/* 移动端：图书选择按钮 - 只在 md 以下屏幕显示 */}
           <div className="relative md:hidden">
@@ -624,6 +628,48 @@ const Reader: React.FC<ReaderProps> = ({
           </button>
           </div>
         </div>
+        )}
+
+        {/* 移动端：无书籍时的顶部栏 */}
+        {!hasActiveBook && (
+        <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm flex-shrink-0 md:hidden">
+          <div className="flex items-center gap-2">
+            <BookOpen size={20} className="text-gray-400" />
+            <span className="text-sm text-gray-600 font-medium">E-Book Lingo Reader</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+            title="添加图书"
+          >
+            <Plus size={18} />
+          </button>
+
+          <button
+            onClick={handleSyncClick}
+            className={`p-2 transition-colors rounded-md ${
+              syncStatus === 'syncing'
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            title="同步"
+            disabled={syncStatus === 'syncing'}
+          >
+            <RefreshCw size={18} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+          </button>
+
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+            title="设置"
+          >
+            <Settings size={18} />
+          </button>
+          </div>
+        </div>
+        )}
 
         {/* Settings Modal - 只在移动端使用 */}
         {showSettings && (
@@ -635,6 +681,8 @@ const Reader: React.FC<ReaderProps> = ({
         )}
 
         {/* 内容区域 */}
+        {hasActiveBook ? (
+        <>
         <div className="flex-1 overflow-hidden cursor-pointer" onClick={handleContentClick}>
           <div className="max-w-3xl mx-auto px-8 py-12 h-full pointer-events-none">
             <div className="pointer-events-auto">
@@ -671,6 +719,21 @@ const Reader: React.FC<ReaderProps> = ({
             <ChevronRight size={20} />
           </button>
         </div>
+        </>
+        ) : (
+        /* 无书籍时的欢迎页面 */
+        <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-4 px-4">
+          <BookOpen size={64} className="text-gray-300" />
+          <p className="text-lg text-gray-500 text-center">欢迎使用 E-Book Lingo Reader</p>
+          <p className="text-sm text-gray-400 text-center max-w-md">
+            点击左侧侧边栏的 <Plus size={14} className="inline" /> 按钮上传 EPUB 或 TXT 文件开始阅读，或使用 <RefreshCw size={14} className="inline" /> 按钮从 WebDAV 同步书籍
+          </p>
+          {/* 移动端提示 */}
+          <p className="text-sm text-gray-400 text-center max-w-md md:hidden">
+            点击右上角的 <Plus size={14} className="inline" /> 按钮上传图书，或使用 <RefreshCw size={14} className="inline" /> 按钮同步书籍
+          </p>
+        </div>
+        )}
       </div>
     </div>
   );
