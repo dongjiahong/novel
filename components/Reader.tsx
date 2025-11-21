@@ -15,7 +15,6 @@ interface ReaderProps {
 }
 
 const BATCH_SIZE = 500; // 每批标注500个生词
-const PARAGRAPH_HEIGHT = 140; // 每个段落的估计高度（像素）
 const HEADER_HEIGHT = 50; // 顶部标题栏高度
 const FOOTER_HEIGHT = 72; // 底部翻页按钮高度
 const CONTENT_PADDING = 96; // 内容区域上下padding总和
@@ -24,8 +23,9 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
   const { checkIsKnown, newWords, dictionarySize } = useWordContext();
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [paragraphsPerPage, setParagraphsPerPage] = useState(8);
+  const [pageRanges, setPageRanges] = useState<{ start: number; end: number }[]>([{ start: 0, end: 0 }]);
   const contentRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
 
   // 词汇分析结果状态
   const [wordAnalysis, setWordAnalysis] = useState<{
@@ -142,22 +142,57 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
     };
   }, [annotatedNewWordsCount, wordAnalysis.newWordIndices, wordAnalysis.words, newWords]);
 
-  // 根据窗口高度动态计算每页段落数
+  // 计算段落总数
+  const paragraphs = useMemo(() => {
+    return chapter.content.split('\n').filter(p => p.trim());
+  }, [chapter.content]);
+
+  // 根据实际内容高度动态计算分页
   useEffect(() => {
-    const calculateParagraphsPerPage = () => {
+    const calculatePages = () => {
+      if (!measureRef.current || paragraphs.length === 0) return;
+
       const windowHeight = window.innerHeight;
       const availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING;
-      const calculatedParagraphs = Math.max(3, Math.floor(availableHeight / PARAGRAPH_HEIGHT));
-      setParagraphsPerPage(calculatedParagraphs);
+
+      // 测量每个段落的实际高度
+      const paragraphElements = measureRef.current.children;
+      const ranges: { start: number; end: number }[] = [];
+      let currentHeight = 0;
+      let pageStart = 0;
+
+      for (let i = 0; i < paragraphElements.length; i++) {
+        const element = paragraphElements[i] as HTMLElement;
+        const elementHeight = element.offsetHeight;
+
+        // 如果加上当前段落会超过可用高度，且当前页已有内容，则开始新页
+        if (currentHeight + elementHeight > availableHeight && i > pageStart) {
+          ranges.push({ start: pageStart, end: i });
+          pageStart = i;
+          currentHeight = elementHeight;
+        } else {
+          currentHeight += elementHeight;
+        }
+      }
+
+      // 添加最后一页
+      if (pageStart < paragraphs.length) {
+        ranges.push({ start: pageStart, end: paragraphs.length });
+      }
+
+      setPageRanges(ranges.length > 0 ? ranges : [{ start: 0, end: paragraphs.length }]);
     };
 
-    // 初始计算
-    calculateParagraphsPerPage();
+    // 需要等待测量容器渲染完成
+    const timer = setTimeout(calculatePages, 100);
 
     // 监听窗口大小变化
-    window.addEventListener('resize', calculateParagraphsPerPage);
-    return () => window.removeEventListener('resize', calculateParagraphsPerPage);
-  }, []);
+    window.addEventListener('resize', calculatePages);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calculatePages);
+    };
+  }, [paragraphs]);
 
   // 重置页码和标注计数（章节切换时）
   useEffect(() => {
@@ -165,12 +200,7 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
     setCurrentPage(initialPage);
   }, [chapter.id, initialPage]);
 
-  // 计算段落总数和总页数
-  const paragraphs = useMemo(() => {
-    return chapter.content.split('\n').filter(p => p.trim());
-  }, [chapter.content]);
-
-  const totalPages = Math.ceil(paragraphs.length / paragraphsPerPage);
+  const totalPages = pageRanges.length;
 
   // 翻页函数
   const goToNextPage = () => {
@@ -208,8 +238,11 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
 
   // 翻页时检查是否需要加载更多标注
   useEffect(() => {
+    if (currentPage >= pageRanges.length) return;
+
     // 计算当前页最后一个单词的全局索引
-    const paragraphsUpToCurrentPage = paragraphs.slice(0, (currentPage + 1) * paragraphsPerPage);
+    const currentRange = pageRanges[currentPage];
+    const paragraphsUpToCurrentPage = paragraphs.slice(0, currentRange.end);
     let wordCount = 0;
 
     paragraphsUpToCurrentPage.forEach(paragraph => {
@@ -229,26 +262,29 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
     if (wordCount > annotatedNewWordsCount && annotatedNewWordsCount < wordAnalysis.totalNewWords) {
       setAnnotatedNewWordsCount(prev => Math.min(prev + BATCH_SIZE, wordAnalysis.totalNewWords));
     }
-  }, [currentPage, paragraphs, paragraphsPerPage, annotatedNewWordsCount, wordAnalysis.totalNewWords]);
+  }, [currentPage, paragraphs, pageRanges, annotatedNewWordsCount, wordAnalysis.totalNewWords]);
 
   // 处理文本：分词并渲染当前页的段落
   const processText = (paragraphsToRender: string[]) => {
     let globalWordIndex = 0;
 
     // 计算当前页之前的所有单词数（用于正确的单词索引）
-    const paragraphsBeforeCurrentPage = paragraphs.slice(0, currentPage * paragraphsPerPage);
-    paragraphsBeforeCurrentPage.forEach(paragraph => {
-      // 跳过空行和标题（与 wordAnalysis 保持一致）
-      if (!paragraph.trim()) return;
-      if (paragraph.trim().startsWith('#') || paragraph.trim().startsWith('**')) return;
+    if (currentPage < pageRanges.length) {
+      const currentRange = pageRanges[currentPage];
+      const paragraphsBeforeCurrentPage = paragraphs.slice(0, currentRange.start);
+      paragraphsBeforeCurrentPage.forEach(paragraph => {
+        // 跳过空行和标题（与 wordAnalysis 保持一致）
+        if (!paragraph.trim()) return;
+        if (paragraph.trim().startsWith('#') || paragraph.trim().startsWith('**')) return;
 
-      const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
-      tokens.forEach(token => {
-        if (/[a-zA-Z]/.test(token)) {
-          globalWordIndex++;
-        }
+        const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
+        tokens.forEach(token => {
+          if (/[a-zA-Z]/.test(token)) {
+            globalWordIndex++;
+          }
+        });
       });
-    });
+    }
 
     return paragraphsToRender.map((paragraph, pIndex) => {
       if (!paragraph.trim()) return <div key={pIndex} className="h-6" />;
@@ -273,7 +309,7 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
       const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
 
       return (
-        <p key={pIndex} className="mb-8 leading-[3rem] text-lg text-gray-700 font-serif text-justify">
+        <p key={pIndex} className="mb-3 leading-[3rem] text-lg text-gray-700 font-serif text-justify">
           {tokens.map((token, tIndex) => {
             if (!token) return null;
 
@@ -305,14 +341,50 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
 
   // 获取当前页的段落
   const currentPageParagraphs = useMemo(() => {
-    const start = currentPage * paragraphsPerPage;
-    const end = start + paragraphsPerPage;
-    return paragraphs.slice(start, end);
-  }, [paragraphs, currentPage, paragraphsPerPage]);
+    if (currentPage >= pageRanges.length) return [];
+    const range = pageRanges[currentPage];
+    return paragraphs.slice(range.start, range.end);
+  }, [paragraphs, currentPage, pageRanges]);
 
+
+  // 渲染用于测量的段落（简化版，不包含单词标注）
+  const renderMeasureParagraph = (paragraph: string, index: number) => {
+    if (!paragraph.trim()) return <div key={index} className="h-6" />;
+
+    if (paragraph.trim().startsWith('# ')) {
+      return (
+        <h1 key={index} className="text-2xl font-bold text-gray-800 mb-6 mt-4">
+          {paragraph.replace('# ', '')}
+        </h1>
+      );
+    }
+    if (paragraph.trim().startsWith('**')) {
+      return (
+        <h2 key={index} className="text-lg font-bold text-gray-700 mb-4 mt-4">
+          {paragraph.replace(/\*\*/g, '')}
+        </h2>
+      );
+    }
+
+    return (
+      <p key={index} className="mb-3 leading-[3rem] text-lg text-gray-700 font-serif text-justify">
+        {paragraph}
+      </p>
+    );
+  };
 
   return (
     <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-white relative flex flex-col">
+      {/* 隐藏的测量容器 */}
+      <div
+        ref={measureRef}
+        className="fixed top-0 left-0 invisible pointer-events-none max-w-3xl px-8"
+        style={{ width: 'calc(100vw - 16rem)' }}
+        aria-hidden="true"
+      >
+        {paragraphs.map((p, i) => renderMeasureParagraph(p, i))}
+      </div>
+
       {/* 顶部标题栏 */}
       <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center shadow-sm flex-shrink-0">
         <span className="text-sm text-gray-500 flex items-center gap-2">
