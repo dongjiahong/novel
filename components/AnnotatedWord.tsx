@@ -19,6 +19,7 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   const { checkIsKnown, setInteractingWord, checkIsInNewWords, dictionarySize } = useWordContext();
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
   const [loading, setLoading] = useState(true);
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
   // 标准化单词
   const cleanWord = normalizeWord(word);
@@ -75,13 +76,38 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   };
 
 
-  // 点击处理：显示单词详情弹窗
-  const handleClick = () => {
-    if (entry && isWordChar) {
+  // 长按开始
+  const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!entry || !isWordChar) return;
+
+    // 阻止事件冒泡，避免触发翻页
+    e.stopPropagation();
+
+    const timer = setTimeout(() => {
       const sentence = extractSentence(paragraph, cleanWord);
       setInteractingWord({ word: cleanWord, entry, sentence });
+    }, 500); // 长按 500ms 触发
+
+    setLongPressTimer(timer);
+  };
+
+  // 长按结束或取消
+  const handlePressEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
     }
   };
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+      }
+    };
+  }, [longPressTimer]);
 
   // 1. 如果不是单词字符，直接渲染
   if (!isWordChar) {
@@ -93,13 +119,17 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
     return <span className="whitespace-pre-wrap">{original}</span>;
   }
 
-  // 3. 如果是已认识的单词，渲染为普通文本（可点击查看详情）
+  // 3. 如果是已认识的单词，渲染为普通文本（可长按查看详情）
   if (isKnown) {
     return (
       <span
         className="cursor-pointer hover:bg-blue-50 rounded px-0.5 transition-colors select-text"
-        onClick={handleClick}
-        title="点击查看详情"
+        onMouseDown={handlePressStart}
+        onMouseUp={handlePressEnd}
+        onMouseLeave={handlePressEnd}
+        onTouchStart={handlePressStart}
+        onTouchEnd={handlePressEnd}
+        title="长按查看详情"
       >
         {original}
       </span>
@@ -112,7 +142,11 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
     return (
       <span
         className={`cursor-pointer ${hoverBgClass} rounded px-0.5 transition-colors`}
-        onClick={handleClick}
+        onMouseDown={handlePressStart}
+        onMouseUp={handlePressEnd}
+        onMouseLeave={handlePressEnd}
+        onTouchStart={handlePressStart}
+        onTouchEnd={handlePressEnd}
       >
         {original}
       </span>
@@ -128,8 +162,12 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   return (
     <span
       className="relative inline-block cursor-pointer group select-text"
-      onClick={handleClick}
-      title={isInNewWords ? "生词表 - 点击查看详情" : "点击查看详情"}
+      onMouseDown={handlePressStart}
+      onMouseUp={handlePressEnd}
+      onMouseLeave={handlePressEnd}
+      onTouchStart={handlePressStart}
+      onTouchEnd={handlePressEnd}
+      title={isInNewWords ? "生词表 - 长按查看详情" : "长按查看详情"}
     >
       {/* 悬浮注释 - 绝对定位在单词上方 */}
       <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-8px] flex flex-col items-center pointer-events-none z-10">
