@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Sidebar from './components/Sidebar';
 import Reader from './components/Reader';
 import { MOCK_BOOKS } from './constants';
 import { Book, BooksMetaData } from './types';
 import { parseFile } from './services/parserService';
 import { syncService } from './services/syncService';
 import { storageService } from './services/storageService';
-import { Loader2, BookOpen, Menu } from 'lucide-react';
-import { WordProvider, useWordContext } from './context/WordContext';
+import { Loader2, BookOpen } from 'lucide-react';
+import { WordProvider } from './context/WordContext';
 import { WordModal } from './components/WordModal';
 import { useReadingProgress } from './hooks/useReadingProgress';
 import { useWebDAVSync } from './hooks/useWebDAVSync';
@@ -21,13 +20,12 @@ function AppContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [downloadingBook, setDownloadingBook] = useState<string | null>(null);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // 标记是否已执行过启动同步，防止重复触发
   const hasInitialSyncRef = useRef(false);
 
   // 阅读进度 hook
-  const { saveProgress, getProgress, setProgressBatch } = useReadingProgress();
+  const { saveProgress, getProgress, setProgressBatch, progressList } = useReadingProgress();
 
   // WebDAV 同步完成回调
   const handleSyncComplete = useCallback(async (booksMeta: BooksMetaData) => {
@@ -181,18 +179,8 @@ function AppContent() {
 
             if (firstBook && firstBook.id) {
               setActiveBookId(firstBook.id);
-
-              // 尝试从阅读进度恢复位置
-              const progress = getProgress(firstBook.id);
-              console.log('阅读进度:', progress);
-
-              if (progress && firstBook.chapters && firstBook.chapters.length > 0) {
-                setActiveChapterId(firstBook.chapters[progress.chapterIndex]?.id || firstBook.chapters[0]?.id);
-              } else if (firstBook.chapters && firstBook.chapters.length > 0) {
-                setActiveChapterId(firstBook.chapters[0].id);
-              } else {
-                console.warn('第一本书没有章节数据');
-              }
+              // 注意：不在这里设置 activeChapterId，因为此时 progressList 可能还未加载
+              // 阅读进度恢复将在下面的 useEffect 中处理
             } else {
               console.error('第一本书数据无效:', firstBook);
             }
@@ -256,6 +244,27 @@ function AppContent() {
       manualSync();
     }
   }, [isInitialLoad, manualSync]);
+
+  // 从阅读进度恢复章节位置（当 progressList 加载完成后）
+  useEffect(() => {
+    if (activeBookId && books.length > 0 && !activeChapterId) {
+      const book = books.find(b => b.id === activeBookId);
+
+      if (book && book.chapters.length > 0) {
+        // 尝试从进度列表中查找该书籍的进度
+        const progress = progressList.find(p => p.bookId === activeBookId);
+        console.log('恢复阅读进度:', progress);
+
+        if (progress && book.chapters[progress.chapterIndex]) {
+          console.log(`恢复到第 ${progress.chapterIndex} 章，第 ${progress.paragraphIndex} 页`);
+          setActiveChapterId(book.chapters[progress.chapterIndex].id);
+        } else {
+          console.log('没有阅读进度，从第一章开始');
+          setActiveChapterId(book.chapters[0].id);
+        }
+      }
+    }
+  }, [activeBookId, books, activeChapterId, progressList]);
 
   // 当切换书籍时，确保章节ID有效
   useEffect(() => {
@@ -417,7 +426,7 @@ function AppContent() {
 
   return (
     <div className="flex h-screen w-full bg-white relative">
-      
+
       {/* Global Modal for Words */}
       <WordModal />
 
@@ -464,73 +473,8 @@ function AppContent() {
           </div>
       )}
 
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block flex-shrink-0 h-full border-r border-gray-200">
-        <Sidebar
-          books={books}
-          activeBookId={activeBookId}
-          activeChapterId={currentChapter.id}
-          chapters={currentBookChapters}
-          onSelectBook={handleSelectBook}
-          onSelectChapter={handleSelectChapter}
-          onAddBook={handleAddBook}
-          onDeleteBook={handleDeleteBook}
-          syncStatus={syncStatus}
-          onManualSync={manualSync}
-          isWebDAVConfigured={isConfigured}
-        />
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {isMobileSidebarOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar Drawer */}
-      <div className={`md:hidden fixed top-0 left-0 h-full z-50 transform transition-transform duration-300 ${
-        isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        <Sidebar
-          books={books}
-          activeBookId={activeBookId}
-          activeChapterId={currentChapter.id}
-          chapters={currentBookChapters}
-          onSelectBook={(id) => {
-            handleSelectBook(id);
-            setIsMobileSidebarOpen(false);
-          }}
-          onSelectChapter={(id) => {
-            handleSelectChapter(id);
-            setIsMobileSidebarOpen(false);
-          }}
-          onAddBook={handleAddBook}
-          onDeleteBook={handleDeleteBook}
-          syncStatus={syncStatus}
-          onManualSync={manualSync}
-          isWebDAVConfigured={isConfigured}
-        />
-      </div>
-
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-         {/* Mobile Header */}
-         <div className="md:hidden h-12 bg-white border-b flex items-center px-4 justify-between flex-shrink-0 shadow-sm">
-            <button
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-              aria-label="打开菜单"
-            >
-              <Menu size={24} />
-            </button>
-            <span className="font-bold text-gray-700">
-              {activeBook?.title || 'E-Book Reader'}
-            </span>
-            <div className="w-10" /> {/* Spacer for centering */}
-         </div>
-
          {activeBookId && activeBook ? (
              <Reader
                  chapter={currentChapter}
@@ -539,6 +483,16 @@ function AppContent() {
                  chapterIndex={currentChapterIndex >= 0 ? currentChapterIndex : 0}
                  onSaveProgress={handleSaveProgress}
                  initialPage={initialPage}
+                 books={books}
+                 chapters={currentBookChapters}
+                 activeChapterId={activeChapterId}
+                 onSelectBook={handleSelectBook}
+                 onSelectChapter={handleSelectChapter}
+                 onAddBook={handleAddBook}
+                 onDeleteBook={handleDeleteBook}
+                 syncStatus={syncStatus}
+                 onManualSync={manualSync}
+                 isWebDAVConfigured={isConfigured}
              />
          ) : (
              <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-2">

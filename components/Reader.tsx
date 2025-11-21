@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Chapter } from '../types';
+import { Chapter, Book, SyncStatus } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
 import { lookupWord, normalizeWord, wordsMatch } from '../services/dictionaryService';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, RefreshCw, BookOpen, List, Plus, Trash2 } from 'lucide-react';
+import SettingsModal from './Settings';
+import Sidebar from './Sidebar';
 
 interface ReaderProps {
   chapter: Chapter;
@@ -12,6 +14,16 @@ interface ReaderProps {
   chapterIndex: number;
   onSaveProgress: (chapterIndex: number, pageIndex: number) => void;
   initialPage?: number;
+  books: Book[];
+  chapters: Chapter[];
+  activeChapterId: string;
+  onSelectBook: (id: string) => void;
+  onSelectChapter: (id: string) => void;
+  onAddBook: (file: File) => void;
+  onDeleteBook: (id: string) => void;
+  syncStatus?: SyncStatus;
+  onManualSync?: () => Promise<boolean>;
+  isWebDAVConfigured?: boolean;
 }
 
 const BATCH_SIZE = 500; // 每批标注500个生词
@@ -20,13 +32,56 @@ const FOOTER_HEIGHT = 72; // 底部翻页按钮高度
 const CONTENT_PADDING = 96; // 内容区域上下padding总和
 const MOBILE_TOP_BAR_HEIGHT = 48; // 移动端顶部栏高度
 
-const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterIndex, onSaveProgress, initialPage = 0 }) => {
+const Reader: React.FC<ReaderProps> = ({
+  chapter,
+  bookId,
+  bookTitle,
+  chapterIndex,
+  onSaveProgress,
+  initialPage = 0,
+  books,
+  chapters,
+  activeChapterId,
+  onSelectBook,
+  onSelectChapter,
+  onAddBook,
+  onDeleteBook,
+  syncStatus,
+  onManualSync,
+  isWebDAVConfigured
+}) => {
   const { checkIsKnown, newWords, dictionarySize } = useWordContext();
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageRanges, setPageRanges] = useState<{ start: number; end: number }[]>([{ start: 0, end: 0 }]);
   const contentRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showBookMenu, setShowBookMenu] = useState(false);
+  const [showChapterMenu, setShowChapterMenu] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 处理同步点击
+  const handleSyncClick = () => {
+    if (!isWebDAVConfigured) {
+      alert('请先在设置中配置 WebDAV 服务器信息');
+      setShowSettings(true);
+    } else if (onManualSync) {
+      onManualSync();
+    }
+  };
+
+  // 处理文件上传
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onAddBook(file);
+      setShowBookMenu(false);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // 词汇分析结果状态
   const [wordAnalysis, setWordAnalysis] = useState<{
@@ -377,86 +432,245 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
   };
 
   return (
-    <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-white relative flex flex-col">
-      {/* 隐藏的测量容器 */}
-      <div
-        ref={measureRef}
-        className="fixed top-0 left-0 invisible pointer-events-none max-w-3xl px-8"
-        style={{ width: 'calc(100vw - 16rem)' }}
-        aria-hidden="true"
-      >
-        {paragraphs.map((p, i) => renderMeasureParagraph(p, i))}
+    <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-white relative flex">
+      {/* 桌面端侧边栏 - 只在 md 以上屏幕显示 */}
+      <div className="hidden md:flex h-full">
+        <Sidebar
+          books={books}
+          activeBookId={bookId}
+          activeChapterId={activeChapterId}
+          chapters={chapters}
+          onSelectBook={onSelectBook}
+          onSelectChapter={onSelectChapter}
+          onAddBook={onAddBook}
+          onDeleteBook={onDeleteBook}
+          syncStatus={syncStatus}
+          onManualSync={onManualSync}
+          isWebDAVConfigured={isWebDAVConfigured}
+        />
       </div>
 
-      {/* 顶部标题栏 */}
-      <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center shadow-sm flex-shrink-0">
-        <span className="text-sm text-gray-500 flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      {/* 主内容区域 */}
+      <div className="flex-1 h-full overflow-hidden bg-white relative flex flex-col">
+        {/* 隐藏的测量容器 */}
+        <div
+          ref={measureRef}
+          className="fixed top-0 left-0 invisible pointer-events-none max-w-3xl px-8"
+          style={{ width: 'calc(100vw - 16rem)' }}
+          aria-hidden="true"
+        >
+          {paragraphs.map((p, i) => renderMeasureParagraph(p, i))}
+        </div>
+
+        {/* 顶部标题栏 - 移动端显示下拉菜单，桌面端只显示信息和操作按钮 */}
+        <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center shadow-sm flex-shrink-0">
+          {/* 移动端：图书选择按钮 - 只在 md 以下屏幕显示 */}
+          <div className="relative md:hidden">
+          <button
+            onClick={() => setShowBookMenu(!showBookMenu)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            title="选择图书"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-            />
-          </svg>
-          {chapter.title}
-        </span>
+            <BookOpen size={16} />
+            <span className="hidden sm:inline max-w-[150px] truncate">{bookTitle}</span>
+          </button>
 
-        {/* 生词统计 */}
-        {wordAnalysis.totalNewWords > 0 && (
-          <span className="ml-4 text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded">
-            {Math.min(annotatedNewWordsCount, wordAnalysis.totalNewWords)} /{' '}
-            {wordAnalysis.totalNewWords} 生词已标注
+          {/* 图书菜单 */}
+          {showBookMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowBookMenu(false)}
+              />
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                <div className="p-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                  >
+                    <Plus size={16} />
+                    <span>添加图书</span>
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".epub,.pdf,.txt"
+                    onChange={handleFileChange}
+                  />
+                </div>
+                <div className="border-t border-gray-200">
+                  {books.map(book => (
+                    <div
+                      key={book.id}
+                      className={`group flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50 ${
+                        bookId === book.id ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <span
+                        onClick={() => {
+                          onSelectBook(book.id);
+                          setShowBookMenu(false);
+                        }}
+                        className={`flex-1 text-sm truncate ${
+                          bookId === book.id ? 'text-blue-600 font-medium' : 'text-gray-700'
+                        }`}
+                        title={book.title}
+                      >
+                        {book.title}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm('确认删除这本书吗？')) {
+                            onDeleteBook(book.id);
+                            setShowBookMenu(false);
+                          }
+                        }}
+                        className="ml-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="删除图书"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+          </div>
+
+          {/* 移动端：章节选择按钮 - 只在 md 以下屏幕显示 */}
+          <div className="relative ml-2 md:hidden">
+          <button
+            onClick={() => setShowChapterMenu(!showChapterMenu)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+            title="选择章节"
+          >
+            <List size={16} />
+            <span className="hidden md:inline max-w-[200px] truncate">{chapter.title}</span>
+          </button>
+
+          {/* 章节菜单 */}
+          {showChapterMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowChapterMenu(false)}
+              />
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                {chapters.map(ch => (
+                  <div
+                    key={ch.id}
+                    onClick={() => {
+                      onSelectChapter(ch.id);
+                      setShowChapterMenu(false);
+                    }}
+                    className={`px-4 py-2 cursor-pointer text-sm hover:bg-gray-50 ${
+                      activeChapterId === ch.id ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'
+                    }`}
+                    title={ch.title}
+                  >
+                    {ch.title}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          </div>
+
+          {/* 桌面端：当前书籍和章节标题 - 只在 md 以上屏幕显示 */}
+          <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+            <BookOpen size={16} className="text-gray-400" />
+            <span className="font-medium max-w-[200px] truncate">{bookTitle}</span>
+            <span className="text-gray-400">/</span>
+            <span className="max-w-[250px] truncate">{chapter.title}</span>
+          </div>
+
+          {/* 生词统计 */}
+          {wordAnalysis.totalNewWords > 0 && (
+            <span className="ml-2 text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded hidden lg:inline">
+              {Math.min(annotatedNewWordsCount, wordAnalysis.totalNewWords)} /{' '}
+              {wordAnalysis.totalNewWords} 生词
+            </span>
+          )}
+
+          {/* 页码显示 */}
+          <span className="ml-auto text-xs text-gray-400 mr-2">
+            {currentPage + 1}/{totalPages}
           </span>
-        )}
 
-        {/* 页码显示 */}
-        <span className="ml-auto text-xs text-gray-400">
-          第 {currentPage + 1} / {totalPages} 页
-        </span>
-      </div>
+          {/* 右侧：同步和设置按钮 - 只在移动端显示，桌面端在侧边栏 */}
+          <div className="flex items-center gap-1 md:hidden">
+          <button
+            onClick={handleSyncClick}
+            className={`p-2 transition-colors rounded-md ${
+              syncStatus === 'syncing'
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            title="同步"
+            disabled={syncStatus === 'syncing'}
+          >
+            <RefreshCw size={18} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+          </button>
 
-      {/* 内容区域 */}
-      <div className="flex-1 overflow-hidden cursor-pointer" onClick={handleContentClick}>
-        <div className="max-w-3xl mx-auto px-8 py-12 h-full pointer-events-none">
-          <div className="pointer-events-auto">
-            {processText(currentPageParagraphs)}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+            title="设置"
+          >
+            <Settings size={18} />
+          </button>
           </div>
         </div>
-      </div>
 
-      {/* 翻页按钮 */}
-      <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4 flex items-center justify-between">
-        <button
-          onClick={goToPrevPage}
-          disabled={currentPage === 0}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-            currentPage === 0
-              ? 'text-gray-300 cursor-not-allowed'
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          <ChevronLeft size={20} />
-          <span>上一页</span>
-        </button>
+        {/* Settings Modal - 只在移动端使用 */}
+        {showSettings && (
+          <SettingsModal
+            onClose={() => setShowSettings(false)}
+            syncStatus={syncStatus}
+            onManualSync={onManualSync}
+          />
+        )}
 
-        <button
-          onClick={goToNextPage}
-          disabled={currentPage >= totalPages - 1}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-            currentPage >= totalPages - 1
-              ? 'text-gray-300 cursor-not-allowed'
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          <span>下一页</span>
-          <ChevronRight size={20} />
-        </button>
+        {/* 内容区域 */}
+        <div className="flex-1 overflow-hidden cursor-pointer" onClick={handleContentClick}>
+          <div className="max-w-3xl mx-auto px-8 py-12 h-full pointer-events-none">
+            <div className="pointer-events-auto">
+              {processText(currentPageParagraphs)}
+            </div>
+          </div>
+        </div>
+
+        {/* 翻页按钮 */}
+        <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4 flex items-center justify-between">
+          <button
+            onClick={goToPrevPage}
+            disabled={currentPage === 0}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              currentPage === 0
+                ? 'text-gray-300 cursor-not-allowed'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <ChevronLeft size={20} />
+            <span>上一页</span>
+          </button>
+
+          <button
+            onClick={goToNextPage}
+            disabled={currentPage >= totalPages - 1}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              currentPage >= totalPages - 1
+                ? 'text-gray-300 cursor-not-allowed'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <span>下一页</span>
+            <ChevronRight size={20} />
+          </button>
+        </div>
       </div>
     </div>
   );

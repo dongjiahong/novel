@@ -164,49 +164,11 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-### 方式二：使用 OpenResty（推荐用于 WebDAV 代理）
-
-如果你需要 WebDAV 代理功能，推荐使用 OpenResty（Nginx 的增强版）：
-
-```bash
-# 安装 OpenResty
-sudo apt-get install openresty
-
-# 使用上述相同的 nginx 配置
-# 重启 OpenResty
-sudo systemctl restart openresty
-```
-
-### SSL/HTTPS 配置（推荐）
-
-使用 Let's Encrypt 获取免费 SSL 证书：
-
-```bash
-# 安装 Certbot
-sudo apt-get install certbot python3-certbot-nginx
-
-# 获取证书并自动配置 Nginx
-sudo certbot --nginx -d your-domain.com
-
-# 自动续期
-sudo certbot renew --dry-run
-```
-
-### 环境变量配置
-
-如果需要配置环境变量（如 API 密钥），创建 `.env.local` 文件：
-
-```env
-GEMINI_API_KEY=your_api_key_here
-```
-
-**注意**：`.env.local` 不应提交到版本控制系统。
-
 ## 📱 使用说明
 
 ### 1. 导入书籍
 
-1. 点击右上角的 **"Upload Book"** 按钮
+1. 点击左上角的 **"Upload Book"** 按钮
 2. 选择 EPUB 或 TXT 格式的电子书文件
 3. 等待解析完成，书籍将出现在侧边栏
 
@@ -245,17 +207,13 @@ GEMINI_API_KEY=your_api_key_here
 
 支持的 WebDAV 服务：
 - **TeraCloud**（日本云存储，免费 10GB）：https://teracloud.jp
-- **坚果云**（国内云存储）：https://www.jianguoyun.com
-- **Nextcloud**（自建服务器）
-- 任何支持 WebDAV 协议的云存储服务
 
 #### 4.2 配置同步
 
-1. 点击侧边栏的 **"Settings"** 图标
+1. 点击 **"Settings"** 图标
 2. 在 **"WebDAV Sync Settings"** 部分填写：
    - **WebDAV URL**：你的 WebDAV 服务器地址
-     - 如果使用本地代理：`http://your-domain.com/webdav-proxy/novel-reader/`
-     - 如果直接连接：`https://your-webdav-server.com/dav/novel-reader/`
+     - 如果使用本地代理：`http://your-domain.com/webdav-proxy/`
    - **Username**：WebDAV 用户名
    - **Password**：WebDAV 密码
 3. 点击 **"Test Connection"** 测试连接
@@ -295,72 +253,6 @@ WebDAV 同步会保存以下数据：
   - 在 Settings 中切换 **"Dictionary Size"** 为 **"Large"**
   - 首次切换会下载大字典文件（约 20MB）
 
-## 🔧 技术细节
-
-### 词汇等级文件
-
-词汇等级数据存储在 `/public/vocabulary-levels/` 目录：
-```
-vocabulary-levels/
-├── cet4.txt
-├── cet6.txt
-├── toefl.txt
-├── ielts.txt
-├── gre.txt
-└── gmat.txt
-```
-
-每个文件包含该等级的词汇列表（每行一个单词）。
-
-### 书籍 ID 生成策略
-
-书籍 ID 通过书名哈希生成：
-```typescript
-const generateBookId = (title: string) => `book-${simpleHash(title)}`;
-```
-
-**优点**：确保相同书籍在不同设备上具有相同 ID，防止同步时重复。
-
-### 性能优化
-
-1. **字典懒加载**：小字典启动时加载，大字典按需加载
-2. **代码分割**：字典文件独立打包，避免主 bundle 过大
-3. **生词高亮批处理**：每章最多渲染 500 个生词，避免 DOM 节点过多导致卡顿
-4. **分页渲染**：根据屏幕高度动态计算每页内容，而非一次渲染整章
-
-## 🐛 常见问题
-
-### Q: WebDAV 同步失败？
-A: 检查以下几点：
-1. WebDAV URL 是否正确（注意结尾斜杠）
-2. 用户名和密码是否正确
-3. 如果使用 HTTPS 站点，WebDAV URL 也必须是 HTTPS（或使用代理）
-4. 检查 nginx 代理配置是否正确
-5. 查看浏览器控制台的错误信息
-
-### Q: 词汇高亮不准确？
-A:
-1. 检查是否选择了正确的词汇等级
-2. 可以手动标记"认识"或"不认识"来调整
-3. 系统包含基本的词形还原（复数、-ed、-ing 等）
-
-### Q: 上传的书籍无法解析？
-A:
-1. 确认文件格式为 EPUB 或 TXT
-2. TXT 文件需要包含章节标记（如 `Chapter 1` 或 `第1章`）
-3. EPUB 文件应为标准格式（部分加密或特殊格式的 EPUB 可能无法解析）
-
-### Q: 大字典加载失败？
-A:
-1. 检查网络连接
-2. 清除浏览器缓存后重试
-3. 如果仍然失败，可以继续使用小字典
-
-### Q: 阅读进度丢失？
-A:
-1. 如果启用了 WebDAV 同步，进度会自动保存到云端
-2. 本地数据存储在浏览器 IndexedDB 中，清除浏览器数据会导致丢失
-3. 定期同步到 WebDAV 可以防止数据丢失
 
 ## 📄 许可证
 
