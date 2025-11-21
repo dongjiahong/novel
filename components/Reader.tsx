@@ -565,7 +565,7 @@ const Reader: React.FC<ReaderProps> = ({
             title="选择章节"
           >
             <List size={16} />
-            <span className="hidden md:inline max-w-[200px] truncate">{chapter.title}</span>
+            <span className="hidden sm:inline max-w-[150px] truncate">{chapter.title}</span>
           </button>
 
           {/* 章节菜单 */}
