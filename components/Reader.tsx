@@ -12,8 +12,8 @@ interface ReaderProps {
   bookId: string;
   bookTitle: string;
   chapterIndex: number;
-  onSaveProgress: (chapterIndex: number, pageIndex: number) => void;
-  initialPage?: number;
+  onSaveProgress: (chapterIndex: number, paragraphIndex: number) => void;
+  initialParagraphIndex?: number;
   books: Book[];
   chapters: Chapter[];
   activeChapterId: string;
@@ -39,7 +39,7 @@ const Reader: React.FC<ReaderProps> = ({
   bookTitle,
   chapterIndex,
   onSaveProgress,
-  initialPage = 0,
+  initialParagraphIndex = 0,
   books,
   chapters,
   activeChapterId,
@@ -53,7 +53,7 @@ const Reader: React.FC<ReaderProps> = ({
 }) => {
   const { checkIsKnown, newWords, dictionarySize } = useWordContext();
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
-  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [currentPage, setCurrentPage] = useState(0);
   const [pageRanges, setPageRanges] = useState<{ start: number; end: number }[]>([{ start: 0, end: 0 }]);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -254,11 +254,29 @@ const Reader: React.FC<ReaderProps> = ({
     };
   }, [paragraphs]);
 
-  // 重置页码和标注计数（章节切换时）
+  // 根据段落索引计算并设置初始页码
+  useEffect(() => {
+    if (pageRanges.length === 0 || pageRanges[0].start === 0 && pageRanges[0].end === 0) {
+      return; // 等待分页计算完成
+    }
+
+    // 找到包含 initialParagraphIndex 的页面
+    const pageIndex = pageRanges.findIndex(
+      range => initialParagraphIndex >= range.start && initialParagraphIndex < range.end
+    );
+
+    if (pageIndex !== -1) {
+      setCurrentPage(pageIndex);
+    } else {
+      // 如果找不到（可能是段落索引超出范围），则设为第一页
+      setCurrentPage(0);
+    }
+  }, [pageRanges, initialParagraphIndex, chapter.id]);
+
+  // 重置标注计数（章节切换时）
   useEffect(() => {
     setAnnotatedNewWordsCount(BATCH_SIZE);
-    setCurrentPage(initialPage);
-  }, [chapter.id, initialPage]);
+  }, [chapter.id]);
 
   const totalPages = pageRanges.length;
 
@@ -267,7 +285,9 @@ const Reader: React.FC<ReaderProps> = ({
     if (currentPage < totalPages - 1) {
       const newPage = currentPage + 1;
       setCurrentPage(newPage);
-      onSaveProgress(chapterIndex, newPage);
+      // 保存段落索引（当前页的第一个段落）
+      const paragraphIndex = pageRanges[newPage]?.start ?? 0;
+      onSaveProgress(chapterIndex, paragraphIndex);
       // 滚动到顶部
       scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -285,7 +305,9 @@ const Reader: React.FC<ReaderProps> = ({
     if (currentPage > 0) {
       const newPage = currentPage - 1;
       setCurrentPage(newPage);
-      onSaveProgress(chapterIndex, newPage);
+      // 保存段落索引（当前页的第一个段落）
+      const paragraphIndex = pageRanges[newPage]?.start ?? 0;
+      onSaveProgress(chapterIndex, paragraphIndex);
       // 滚动到顶部
       scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
