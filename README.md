@@ -206,7 +206,7 @@ sudo systemctl restart nginx
 #### 4.1 准备 WebDAV 服务器
 
 支持的 WebDAV 服务：
-- **TeraCloud**（日本云存储，免费 10GB）：https://teracloud.jp
+- **TeraCloud**（日本老牌云存储，免费 20GB）：https://account.teracloud.jp/RegistForm.php/index/ 邀请码可以填我的 5GLSD 这样咱俩都能得到 5G 空间
 
 #### 4.2 配置同步
 
