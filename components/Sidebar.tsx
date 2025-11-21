@@ -95,50 +95,48 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* Middle Left: File Tree */}
-      <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col overflow-y-auto no-scrollbar text-sm">
-        <div className="p-4 font-medium text-gray-500 text-xs uppercase tracking-wider mb-2">目录</div>
-        
+      <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col text-sm">
         {/* Library Section */}
-        <div className="mb-2">
+        <div className="border-b border-gray-200">
           <div className="flex items-center justify-between px-3 hover:bg-gray-100 group">
-              <button 
+              <button
                 onClick={() => setLibraryOpen(!isLibraryOpen)}
-                className="flex items-center flex-1 py-1 text-gray-600 text-xs font-medium text-left"
+                className="flex items-center flex-1 py-2 text-gray-600 text-xs font-medium text-left"
               >
                 {isLibraryOpen ? <ChevronDown size={14} className="mr-1" /> : <ChevronRight size={14} className="mr-1" />}
                 图书馆
               </button>
-              <button 
+              <button
                 onClick={(e) => {
                     e.stopPropagation();
                     fileInputRef.current?.click();
                 }}
-                className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors opacity-0 group-hover:opacity-100"
+                className="p-1 text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 rounded transition-colors"
                 title="添加图书"
               >
                 <Plus size={14} />
               </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept=".epub,.pdf,.txt" 
-                onChange={handleFileChange} 
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".epub,.pdf,.txt"
+                onChange={handleFileChange}
               />
           </div>
-          
+
           {isLibraryOpen && (
-            <div className="mt-1">
+            <div className="max-h-80 overflow-y-auto">
               {books.map(book => (
-                <div 
+                <div
                     key={book.id}
                     onClick={() => onSelectBook(book.id)}
                     className={`group flex items-center justify-between pl-7 pr-3 py-1.5 cursor-pointer truncate transition-colors text-xs ${activeBookId === book.id ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-500' : 'text-gray-600 hover:bg-gray-100'}`}
                 >
                   <span className="truncate flex-1" title={book.title}>{book.title}</span>
-                  
+
                   {/* Delete Button (Visible on hover) */}
-                  <button 
+                  <button
                     onClick={(e) => {
                         e.stopPropagation();
                         // Basic confirmation is good practice
@@ -163,20 +161,20 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* TOC Section */}
-        <div className="mb-2 mt-2">
-            <button 
+        <div className="flex-1 flex flex-col overflow-hidden">
+            <button
                 onClick={() => setTocOpen(!isTocOpen)}
-                className="flex items-center w-full px-3 py-1 text-gray-600 hover:bg-gray-100 text-xs font-medium"
+                className="flex items-center w-full px-3 py-2 text-gray-600 hover:bg-gray-100 text-xs font-medium flex-shrink-0"
             >
                 {isTocOpen ? <ChevronDown size={14} className="mr-1" /> : <ChevronRight size={14} className="mr-1" />}
                 章节
             </button>
 
             {isTocOpen && (
-                <div className="mt-1">
+                <div className="flex-1 overflow-y-auto">
                     {chapters.map((chapter) => (
-                        <div 
-                            key={chapter.id} 
+                        <div
+                            key={chapter.id}
                             onClick={() => onSelectChapter(chapter.id)}
                             className={`pl-7 pr-3 py-1.5 cursor-pointer truncate text-xs transition-colors ${activeChapterId === chapter.id ? 'text-blue-600 font-medium' : 'text-gray-500 hover:bg-gray-100'}`}
                             title={chapter.title}

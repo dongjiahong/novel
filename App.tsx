@@ -170,10 +170,10 @@ function AppContent() {
                          || currentBookChapters[0]
                          || { id: 'empty', title: '无内容', content: '' };
 
-  // 获取当前章节的索引和初始页码
+  // 获取当前章节的索引和初始段落索引
   const currentChapterIndex = currentBookChapters.findIndex(c => c.id === activeChapterId);
   const progress = activeBookId ? getProgress(activeBookId) : null;
-  const initialPage = (progress && progress.chapterIndex === currentChapterIndex) ? progress.paragraphIndex : 0;
+  const initialParagraphIndex = (progress && progress.chapterIndex === currentChapterIndex) ? progress.paragraphIndex : 0;
 
   // 从 IndexedDB 加载书籍和文件内容
   useEffect(() => {
@@ -279,7 +279,7 @@ function AppContent() {
         console.log('恢复阅读进度:', progress);
 
         if (progress && book.chapters[progress.chapterIndex]) {
-          console.log(`恢复到第 ${progress.chapterIndex} 章，第 ${progress.paragraphIndex} 页`);
+          console.log(`恢复到第 ${progress.chapterIndex} 章，段落索引 ${progress.paragraphIndex}`);
           setActiveChapterId(book.chapters[progress.chapterIndex].id);
         } else {
           console.log('没有阅读进度，从第一章开始');
@@ -330,14 +330,14 @@ function AppContent() {
                   activeBook.title,
                   chapterIndex,
                   chapter.title,
-                  0 // 切换章节时从第一页开始
+                  0 // 切换章节时从第一个段落开始
               );
           }
       }
   };
 
   // 处理阅读进度保存（翻页时调用）
-  const handleSaveProgress = useCallback((chapterIndex: number, pageIndex: number) => {
+  const handleSaveProgress = useCallback((chapterIndex: number, paragraphIndex: number) => {
       if (activeBook && activeBook.chapters[chapterIndex]) {
           const chapter = activeBook.chapters[chapterIndex];
           saveProgress(
@@ -345,7 +345,7 @@ function AppContent() {
               activeBook.title,
               chapterIndex,
               chapter.title,
-              pageIndex
+              paragraphIndex
           );
       }
   }, [activeBook, saveProgress]);
@@ -542,7 +542,7 @@ function AppContent() {
                  bookTitle={activeBook.title}
                  chapterIndex={currentChapterIndex >= 0 ? currentChapterIndex : 0}
                  onSaveProgress={handleSaveProgress}
-                 initialPage={initialPage}
+                 initialParagraphIndex={initialParagraphIndex}
                  books={books}
                  chapters={currentBookChapters}
                  activeChapterId={activeChapterId}
@@ -561,7 +561,7 @@ function AppContent() {
                  bookTitle={''}
                  chapterIndex={0}
                  onSaveProgress={handleSaveProgress}
-                 initialPage={0}
+                 initialParagraphIndex={0}
                  books={books}
                  chapters={[]}
                  activeChapterId={''}
