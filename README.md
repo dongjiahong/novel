@@ -16,6 +16,8 @@ only reading 是一款专为英语学习者设计的电子书阅读器，能够�
 
 ![](./screenshots/1.jpg)
 
+更多截图[访问](https://github.com/dongjiahong/novel/tree/main/screenshots)
+
 ## ✨ 功能特性
 
 ### 📚 阅读功能
