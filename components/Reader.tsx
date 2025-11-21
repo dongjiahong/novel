@@ -3,7 +3,7 @@ import { Chapter, Book, SyncStatus } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
 import { lookupWord, normalizeWord, wordsMatch } from '../services/dictionaryService';
-import { ChevronLeft, ChevronRight, Settings, RefreshCw, BookOpen, List, Plus, Trash2 } from 'lucide-react';
+import { Settings, RefreshCw, BookOpen, List, Plus, Trash2 } from 'lucide-react';
 import SettingsModal from './Settings';
 import Sidebar from './Sidebar';
 
@@ -28,7 +28,7 @@ interface ReaderProps {
 
 const BATCH_SIZE = 500; // 每批标注500个生词
 const HEADER_HEIGHT = 50; // 顶部标题栏高度
-const FOOTER_HEIGHT = 72; // 底部翻页按钮高度
+const FOOTER_HEIGHT = 0; // 底部翻页按钮高度（已移除）
 const CONTENT_PADDING = 96; // 内容区域上下padding总和
 const MOBILE_TOP_BAR_HEIGHT = 48; // 移动端顶部栏高度
 
@@ -458,8 +458,7 @@ const Reader: React.FC<ReaderProps> = ({
         {/* 隐藏的测量容器 */}
         <div
           ref={measureRef}
-          className="fixed top-0 left-0 invisible pointer-events-none max-w-3xl px-8"
-          style={{ width: 'calc(100vw - 16rem)' }}
+          className="fixed top-0 left-0 invisible pointer-events-none max-w-3xl px-8 w-full md:w-[calc(100vw-16rem)]"
           aria-hidden="true"
         >
           {paragraphs.map((p, i) => renderMeasureParagraph(p, i))}
@@ -682,7 +681,6 @@ const Reader: React.FC<ReaderProps> = ({
 
         {/* 内容区域 */}
         {hasActiveBook ? (
-        <>
         <div className="flex-1 overflow-hidden cursor-pointer" onClick={handleContentClick}>
           <div className="max-w-3xl mx-auto px-8 py-12 h-full pointer-events-none">
             <div className="pointer-events-auto">
@@ -690,36 +688,6 @@ const Reader: React.FC<ReaderProps> = ({
             </div>
           </div>
         </div>
-
-        {/* 翻页按钮 */}
-        <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={goToPrevPage}
-            disabled={currentPage === 0}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              currentPage === 0
-                ? 'text-gray-300 cursor-not-allowed'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <ChevronLeft size={20} />
-            <span>上一页</span>
-          </button>
-
-          <button
-            onClick={goToNextPage}
-            disabled={currentPage >= totalPages - 1}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              currentPage >= totalPages - 1
-                ? 'text-gray-300 cursor-not-allowed'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <span>下一页</span>
-            <ChevronRight size={20} />
-          </button>
-        </div>
-        </>
         ) : (
         /* 无书籍时的欢迎页面 */
         <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-4 px-4">
