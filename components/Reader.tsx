@@ -30,6 +30,7 @@ const BATCH_SIZE = 500; // 每批标注500个生词
 const HEADER_HEIGHT = 50; // 顶部标题栏高度
 const FOOTER_HEIGHT = 0; // 底部翻页按钮高度（已移除）
 const CONTENT_PADDING = 96; // 内容区域上下padding总和
+const BOTTOM_SAFE_SPACE = 80; // 底部预留空间，防止最后一行被截断
 const MOBILE_TOP_BAR_HEIGHT = 48; // 移动端顶部栏高度
 
 const Reader: React.FC<ReaderProps> = ({
@@ -211,7 +212,7 @@ const Reader: React.FC<ReaderProps> = ({
       const windowHeight = window.innerHeight;
       const isMobile = window.innerWidth < 768; // md breakpoint
       const extraHeight = isMobile ? MOBILE_TOP_BAR_HEIGHT : 0;
-      const availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING - extraHeight;
+      const availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING - BOTTOM_SAFE_SPACE - extraHeight;
 
       // 测量每个段落的实际高度
       const paragraphElements = measureRef.current.children;
@@ -458,7 +459,7 @@ const Reader: React.FC<ReaderProps> = ({
         {/* 隐藏的测量容器 */}
         <div
           ref={measureRef}
-          className="fixed top-0 left-0 invisible pointer-events-none max-w-3xl px-8 w-full md:w-[calc(100vw-16rem)]"
+          className="fixed top-0 left-0 invisible pointer-events-none max-w-3xl px-8 py-12 w-full md:w-[calc(100vw-16rem)]"
           aria-hidden="true"
         >
           {paragraphs.map((p, i) => renderMeasureParagraph(p, i))}
