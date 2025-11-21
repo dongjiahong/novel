@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { webdavService } from '../services/webdavService';
 import { syncService } from '../services/syncService';
-import { SyncStatus, Book, BooksMetaData } from '../types';
+import { SyncStatus, Book, BooksMetaData, SyncProgress } from '../types';
 
 interface UseWebDAVSyncOptions {
   books: Book[];
@@ -18,6 +18,7 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
   const { books, bookFiles, onSyncComplete, autoSyncEnabled = true } = options;
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(webdavService.isConfigured());
@@ -82,10 +83,13 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
     isSyncingRef.current = true;
     setSyncStatus('syncing');
     setSyncError(null);
+    setSyncProgress(null);
 
     try {
-      // 执行完整同步
-      const result = await syncService.performFullSync(books, bookFiles);
+      // 执行完整同步，传递进度回调
+      const result = await syncService.performFullSync(books, bookFiles, (progress) => {
+        setSyncProgress(progress);
+      });
 
       if (result.success && result.mergedBooksMeta) {
         setSyncStatus('success');
@@ -99,18 +103,21 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
         // 2秒后恢复为 idle 状态
         setTimeout(() => {
           setSyncStatus('idle');
+          setSyncProgress(null);
         }, 2000);
 
         return true;
       } else {
         setSyncStatus('error');
         setSyncError(result.error || '同步失败');
+        setSyncProgress(null);
         return false;
       }
     } catch (error) {
       console.error('同步失败:', error);
       setSyncStatus('error');
       setSyncError(error instanceof Error ? error.message : '未知错误');
+      setSyncProgress(null);
       return false;
     } finally {
       isSyncingRef.current = false;
@@ -168,6 +175,7 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
 
   return {
     syncStatus,
+    syncProgress,
     lastSyncTime,
     syncError,
     manualSync,

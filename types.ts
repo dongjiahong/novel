@@ -56,6 +56,23 @@ export interface WebDAVConfig {
 // 同步状态
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
+// 同步步骤
+export type SyncStep =
+  | 'config'           // 同步用户配置
+  | 'books-meta'       // 同步书籍元数据
+  | 'new-words'        // 同步生词表
+  | 'reading-progress' // 同步阅读进度
+  | 'book-files'       // 同步书籍文件
+  | 'complete';        // 同步完成
+
+// 同步进度信息
+export interface SyncProgress {
+  currentStep: SyncStep;
+  totalSteps: number;
+  currentStepIndex: number;
+  message: string; // 当前步骤的描述信息
+}
+
 // 阅读进度
 export interface ReadingProgress {
   bookId: string;

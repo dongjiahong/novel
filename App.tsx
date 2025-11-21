@@ -133,7 +133,7 @@ function AppContent() {
   }, [books, bookFiles, activeBookId, getProgress]);
 
   // WebDAV 同步 hook
-  const { syncStatus, lastSyncTime, syncError, manualSync, autoSync, isConfigured } = useWebDAVSync({
+  const { syncStatus, syncProgress, lastSyncTime, syncError, manualSync, autoSync, isConfigured } = useWebDAVSync({
     books,
     bookFiles,
     onSyncComplete: handleSyncComplete,
@@ -470,9 +470,25 @@ function AppContent() {
 
       {/* 同步状态提示 */}
       {syncStatus === 'syncing' && (
-          <div className="absolute top-4 right-4 z-50 bg-blue-100 text-blue-700 px-4 py-2 rounded shadow border border-blue-200 flex items-center gap-2">
-              <Loader2 className="animate-spin" size={16} />
-              <span>正在同步...</span>
+          <div className="absolute top-4 right-4 z-50 bg-blue-100 text-blue-700 px-4 py-3 rounded shadow border border-blue-200 min-w-[280px]">
+              <div className="flex items-center gap-2 mb-2">
+                  <Loader2 className="animate-spin" size={16} />
+                  <span className="font-medium">正在同步</span>
+              </div>
+              {syncProgress && (
+                  <div className="space-y-1 text-sm">
+                      <div className="flex justify-between items-center">
+                          <span>{syncProgress.message}</span>
+                          <span className="text-xs opacity-75">{syncProgress.currentStepIndex}/{syncProgress.totalSteps}</span>
+                      </div>
+                      <div className="w-full bg-blue-200 rounded-full h-1.5">
+                          <div
+                              className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                              style={{ width: `${(syncProgress.currentStepIndex / syncProgress.totalSteps) * 100}%` }}
+                          />
+                      </div>
+                  </div>
+              )}
           </div>
       )}
       {syncStatus === 'success' && (

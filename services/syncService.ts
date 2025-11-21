@@ -10,6 +10,8 @@ import {
   SyncMetadata,
   UserConfig,
   SyncData, // 旧数据结构，用于迁移
+  SyncProgress,
+  SyncStep,
 } from '../types';
 
 const DEVICE_ID_KEY = 'device_id';
@@ -426,13 +428,19 @@ class SyncService {
   /**
    * 完整同步流程：分别同步各个数据文件
    */
-  async performFullSync(localBooks: Book[], bookFiles: Map<string, string>): Promise<{
+  async performFullSync(
+    localBooks: Book[],
+    bookFiles: Map<string, string>,
+    onProgress?: (progress: SyncProgress) => void
+  ): Promise<{
     success: boolean;
     mergedBooksMeta: BooksMetaData | null;
     error?: string;
   }> {
     try {
       console.log('开始同步...');
+
+      const totalSteps = 5;
 
       // 确保 books 目录存在
       try {
@@ -444,6 +452,12 @@ class SyncService {
 
       // 1. 同步用户配置
       console.log('同步用户配置...');
+      onProgress?.({
+        currentStep: 'config',
+        totalSteps,
+        currentStepIndex: 1,
+        message: '正在同步用户配置',
+      });
       const localConfig = await this.collectLocalConfig();
       const remoteConfig = await this.downloadConfig();
       const mergedConfig = remoteConfig
@@ -454,6 +468,12 @@ class SyncService {
 
       // 2. 同步书籍元数据
       console.log('同步书籍元数据...');
+      onProgress?.({
+        currentStep: 'books-meta',
+        totalSteps,
+        currentStepIndex: 2,
+        message: '正在同步书籍元数据',
+      });
       const localBooksMeta = await this.collectLocalBooksMeta(localBooks);
       const remoteBooksMeta = await this.downloadBooksMeta();
       const mergedBooksMeta = remoteBooksMeta
@@ -464,6 +484,12 @@ class SyncService {
 
       // 3. 同步生词表
       console.log('同步生词表...');
+      onProgress?.({
+        currentStep: 'new-words',
+        totalSteps,
+        currentStepIndex: 3,
+        message: '正在同步生词表',
+      });
       const localNewWords = await this.collectLocalNewWords();
       const remoteNewWords = await this.downloadNewWords();
       const mergedNewWords = remoteNewWords
@@ -474,6 +500,12 @@ class SyncService {
 
       // 4. 同步阅读进度
       console.log('同步阅读进度...');
+      onProgress?.({
+        currentStep: 'reading-progress',
+        totalSteps,
+        currentStepIndex: 4,
+        message: '正在同步阅读进度',
+      });
       const localProgress = await this.collectLocalReadingProgress();
       const remoteProgress = await this.downloadReadingProgress();
       const mergedProgress = remoteProgress
@@ -484,6 +516,12 @@ class SyncService {
 
       // 5. 同步书籍文件（只上传本地有但远程没有的书籍）
       console.log('同步书籍文件...');
+      onProgress?.({
+        currentStep: 'book-files',
+        totalSteps,
+        currentStepIndex: 5,
+        message: '正在同步书籍文件',
+      });
       for (const [bookId, fileContent] of bookFiles.entries()) {
         const book = localBooks.find(b => b.id === bookId);
         if (book) {
@@ -508,6 +546,14 @@ class SyncService {
         },
       };
       await webdavService.uploadFile(SYNC_METADATA_PATH, JSON.stringify(metadata, null, 2));
+
+      // 同步完成
+      onProgress?.({
+        currentStep: 'complete',
+        totalSteps,
+        currentStepIndex: totalSteps,
+        message: '同步完成',
+      });
 
       console.log('同步完成！');
       return {
