@@ -5,7 +5,7 @@ import { Book, BooksMetaData } from './types';
 import { parseFile } from './services/parserService';
 import { syncService } from './services/syncService';
 import { storageService } from './services/storageService';
-import { Loader2, BookOpen } from 'lucide-react';
+import { Loader2, BookOpen, RefreshCw } from 'lucide-react';
 import { WordProvider } from './context/WordContext';
 import { WordModal } from './components/WordModal';
 import { useReadingProgress } from './hooks/useReadingProgress';
@@ -26,7 +26,7 @@ function AppContent() {
   const hasInitialSyncRef = useRef(false);
 
   // 阅读进度 hook
-  const { saveProgress, getProgress, setProgressBatch, progressList } = useReadingProgress();
+  const { saveProgress, getProgress, setProgressBatch, progressList, removeProgress } = useReadingProgress();
 
   // WebDAV 同步完成回调
   const handleSyncComplete = useCallback(async (booksMeta: BooksMetaData) => {
@@ -346,6 +346,27 @@ function AppContent() {
         console.error('从 IndexedDB 删除书籍失败:', error);
       }
 
+      // 删除阅读进度
+      try {
+        removeProgress(id);
+        console.log(`已删除书籍 ${id} 的阅读进度`);
+      } catch (error) {
+        console.error('删除阅读进度失败:', error);
+      }
+
+      // 清理 localStorage 中的 books_meta
+      try {
+        const booksMetaStr = localStorage.getItem('books_meta');
+        if (booksMetaStr) {
+          const booksMeta = JSON.parse(booksMetaStr);
+          const updatedMeta = booksMeta.filter((book: any) => book.id !== id);
+          localStorage.setItem('books_meta', JSON.stringify(updatedMeta));
+          console.log(`已从 books_meta 中删除书籍 ${id}`);
+        }
+      } catch (error) {
+        console.error('清理 books_meta 失败:', error);
+      }
+
       if (activeBookId === id) {
           if (newBooks.length > 0) {
               const nextBook = newBooks[0];
@@ -499,14 +520,34 @@ function AppContent() {
              <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-4">
                  <BookOpen size={64} className="text-gray-300" />
                  <p className="text-lg text-gray-500">欢迎使用 E-Book Lingo Reader</p>
-                 <p className="text-sm text-gray-400">上传 EPUB 或 TXT 文件开始阅读</p>
-                 <button
-                   onClick={() => emptyStateFileInputRef.current?.click()}
-                   className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md"
-                 >
-                   <BookOpen size={20} />
-                   <span>上传图书</span>
-                 </button>
+                 <p className="text-sm text-gray-400">上传 EPUB 或 TXT 文件开始阅读，或从 WebDAV 同步书籍</p>
+                 <div className="flex gap-3 mt-4">
+                   <button
+                     onClick={() => emptyStateFileInputRef.current?.click()}
+                     className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md"
+                   >
+                     <BookOpen size={20} />
+                     <span>上传图书</span>
+                   </button>
+                   <button
+                     onClick={() => {
+                       if (!isConfigured) {
+                         alert('请先在设置中配置 WebDAV 服务器信息');
+                       } else {
+                         manualSync();
+                       }
+                     }}
+                     disabled={syncStatus === 'syncing'}
+                     className={`px-6 py-3 rounded-lg transition-colors flex items-center gap-2 shadow-md ${
+                       syncStatus === 'syncing'
+                         ? 'bg-gray-400 text-white cursor-not-allowed'
+                         : 'bg-green-600 text-white hover:bg-green-700'
+                     }`}
+                   >
+                     <RefreshCw size={20} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+                     <span>{syncStatus === 'syncing' ? '同步中...' : '同步书籍'}</span>
+                   </button>
+                 </div>
                  <input
                    type="file"
                    ref={emptyStateFileInputRef}
