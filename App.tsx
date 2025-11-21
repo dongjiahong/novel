@@ -20,6 +20,7 @@ function AppContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [downloadingBook, setDownloadingBook] = useState<string | null>(null);
+  const emptyStateFileInputRef = useRef<HTMLInputElement>(null);
 
   // 标记是否已执行过启动同步，防止重复触发
   const hasInitialSyncRef = useRef(false);
@@ -495,9 +496,32 @@ function AppContent() {
                  isWebDAVConfigured={isConfigured}
              />
          ) : (
-             <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-2">
-                 <BookOpen size={48} className="text-gray-200" />
-                 <p>请上传或选择一本书开始阅读</p>
+             <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-4">
+                 <BookOpen size={64} className="text-gray-300" />
+                 <p className="text-lg text-gray-500">欢迎使用 E-Book Lingo Reader</p>
+                 <p className="text-sm text-gray-400">上传 EPUB 或 TXT 文件开始阅读</p>
+                 <button
+                   onClick={() => emptyStateFileInputRef.current?.click()}
+                   className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md"
+                 >
+                   <BookOpen size={20} />
+                   <span>上传图书</span>
+                 </button>
+                 <input
+                   type="file"
+                   ref={emptyStateFileInputRef}
+                   className="hidden"
+                   accept=".epub,.pdf,.txt"
+                   onChange={(e) => {
+                     const file = e.target.files?.[0];
+                     if (file) {
+                       handleAddBook(file);
+                     }
+                     if (emptyStateFileInputRef.current) {
+                       emptyStateFileInputRef.current.value = '';
+                     }
+                   }}
+                 />
              </div>
          )}
       </div>
