@@ -57,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex bg-white shadow-lg">
       {/* Far Left: Icon Strip */}
       <div className="w-12 bg-gray-50 border-r border-gray-200 flex flex-col items-center py-4 gap-6 z-20">
          {/* 手动同步按钮 */}

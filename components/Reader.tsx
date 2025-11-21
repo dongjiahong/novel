@@ -18,6 +18,7 @@ const BATCH_SIZE = 500; // 每批标注500个生词
 const HEADER_HEIGHT = 50; // 顶部标题栏高度
 const FOOTER_HEIGHT = 72; // 底部翻页按钮高度
 const CONTENT_PADDING = 96; // 内容区域上下padding总和
+const MOBILE_TOP_BAR_HEIGHT = 48; // 移动端顶部栏高度
 
 const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterIndex, onSaveProgress, initialPage = 0 }) => {
   const { checkIsKnown, newWords, dictionarySize } = useWordContext();
@@ -153,7 +154,9 @@ const Reader: React.FC<ReaderProps> = ({ chapter, bookId, bookTitle, chapterInde
       if (!measureRef.current || paragraphs.length === 0) return;
 
       const windowHeight = window.innerHeight;
-      const availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING;
+      const isMobile = window.innerWidth < 768; // md breakpoint
+      const extraHeight = isMobile ? MOBILE_TOP_BAR_HEIGHT : 0;
+      const availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING - extraHeight;
 
       // 测量每个段落的实际高度
       const paragraphElements = measureRef.current.children;

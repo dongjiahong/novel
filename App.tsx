@@ -6,7 +6,7 @@ import { Book, BooksMetaData } from './types';
 import { parseFile } from './services/parserService';
 import { syncService } from './services/syncService';
 import { storageService } from './services/storageService';
-import { Loader2, BookOpen } from 'lucide-react';
+import { Loader2, BookOpen, Menu } from 'lucide-react';
 import { WordProvider, useWordContext } from './context/WordContext';
 import { WordModal } from './components/WordModal';
 import { useReadingProgress } from './hooks/useReadingProgress';
@@ -21,6 +21,7 @@ function AppContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [downloadingBook, setDownloadingBook] = useState<string | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // 标记是否已执行过启动同步，防止重复触发
   const hasInitialSyncRef = useRef(false);
@@ -463,7 +464,7 @@ function AppContent() {
           </div>
       )}
 
-      {/* Sidebar Container */}
+      {/* Desktop Sidebar */}
       <div className="hidden md:block flex-shrink-0 h-full border-r border-gray-200">
         <Sidebar
           books={books}
@@ -480,12 +481,54 @@ function AppContent() {
         />
       </div>
 
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      <div className={`md:hidden fixed top-0 left-0 h-full z-50 transform transition-transform duration-300 ${
+        isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <Sidebar
+          books={books}
+          activeBookId={activeBookId}
+          activeChapterId={currentChapter.id}
+          chapters={currentBookChapters}
+          onSelectBook={(id) => {
+            handleSelectBook(id);
+            setIsMobileSidebarOpen(false);
+          }}
+          onSelectChapter={(id) => {
+            handleSelectChapter(id);
+            setIsMobileSidebarOpen(false);
+          }}
+          onAddBook={handleAddBook}
+          onDeleteBook={handleDeleteBook}
+          syncStatus={syncStatus}
+          onManualSync={manualSync}
+          isWebDAVConfigured={isConfigured}
+        />
+      </div>
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
          {/* Mobile Header */}
-         <div className="md:hidden h-12 bg-white border-b flex items-center px-4 justify-between flex-shrink-0">
-            <span className="font-bold text-gray-700">E-Reader</span>
-            <button className="text-gray-500">Menu</button>
+         <div className="md:hidden h-12 bg-white border-b flex items-center px-4 justify-between flex-shrink-0 shadow-sm">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              aria-label="打开菜单"
+            >
+              <Menu size={24} />
+            </button>
+            <span className="font-bold text-gray-700">
+              {activeBook?.title || 'E-Book Reader'}
+            </span>
+            <div className="w-10" /> {/* Spacer for centering */}
          </div>
 
          {activeBookId && activeBook ? (
