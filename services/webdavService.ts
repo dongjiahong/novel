@@ -111,6 +111,10 @@ class WebDAVService {
    * 检查配置是否有效
    */
   isConfigured(): boolean {
+    // 如果内存中没有配置，先尝试从 localStorage 加载
+    if (!this.config) {
+      this.loadConfig();
+    }
     return this.config !== null && this.config.url !== '' && this.config.username !== '';
   }
 
