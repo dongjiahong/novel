@@ -56,6 +56,7 @@ const Reader: React.FC<ReaderProps> = ({
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageRanges, setPageRanges] = useState<{ start: number; end: number }[]>([{ start: 0, end: 0 }]);
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showBookMenu, setShowBookMenu] = useState(false);
@@ -267,6 +268,8 @@ const Reader: React.FC<ReaderProps> = ({
       const newPage = currentPage + 1;
       setCurrentPage(newPage);
       onSaveProgress(chapterIndex, newPage);
+      // 滚动到顶部
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -275,6 +278,8 @@ const Reader: React.FC<ReaderProps> = ({
       const newPage = currentPage - 1;
       setCurrentPage(newPage);
       onSaveProgress(chapterIndex, newPage);
+      // 滚动到顶部
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -682,8 +687,8 @@ const Reader: React.FC<ReaderProps> = ({
 
         {/* 内容区域 */}
         {hasActiveBook ? (
-        <div className="flex-1 overflow-hidden cursor-pointer" onClick={handleContentClick}>
-          <div className="max-w-3xl mx-auto px-8 py-12 h-full pointer-events-none">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto cursor-pointer" onClick={handleContentClick}>
+          <div className="max-w-3xl mx-auto px-8 py-12 min-h-full pointer-events-none">
             <div className="pointer-events-auto">
               {processText(currentPageParagraphs)}
             </div>
