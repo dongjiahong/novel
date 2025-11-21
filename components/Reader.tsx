@@ -270,6 +270,14 @@ const Reader: React.FC<ReaderProps> = ({
       onSaveProgress(chapterIndex, newPage);
       // 滚动到顶部
       scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // 已经在最后一页，尝试跳到下一章
+      const currentChapterIndex = chapters.findIndex(ch => ch.id === activeChapterId);
+      if (currentChapterIndex !== -1 && currentChapterIndex < chapters.length - 1) {
+        // 跳到下一章
+        const nextChapter = chapters[currentChapterIndex + 1];
+        onSelectChapter(nextChapter.id);
+      }
     }
   };
 
