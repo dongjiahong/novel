@@ -169,24 +169,26 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
       onTouchEnd={handlePressEnd}
       title={isInNewWords ? "生词表 - 长按查看详情" : "长按查看详情"}
     >
-      {/* 悬浮注释 - 绝对定位在单词上方 */}
+      {/* 中文翻译 - 绝对定位在单词上方 */}
       <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-8px] flex flex-col items-center pointer-events-none z-10">
-        {/* 中文翻译 - 显示前3个解释 */}
-        <span className={`text-[9px] ${textColorClass} font-medium whitespace-nowrap leading-tight`}>
+        <span className={`text-[10px] ${textColorClass} font-medium whitespace-nowrap leading-tight`}>
           {entry.translation?.split(/[,;]/).slice(0, 3).join(', ').substring(0, 24) || '...'}
         </span>
-        {/* 音标 */}
-        {entry.phonetic && (
-          <span className="text-[8px] text-gray-400 font-light whitespace-nowrap leading-tight">
-            {entry.phonetic}
-          </span>
-        )}
       </span>
 
       {/* 英文单词 - 生词用橙色，生词表中的用紫色 */}
       <span className={`${textColorClass} font-serif text-lg ${hoverColorClass} transition-colors`}>
         {word}
       </span>
+
+      {/* 音标 - 绝对定位在单词下方 */}
+      {entry.phonetic && (
+        <span className="absolute left-1/2 -translate-x-1/2 top-full mt-[-20px] pointer-events-none z-10">
+          <span className="text-[10px] text-gray-400 font-light whitespace-nowrap leading-tight">
+            {entry.phonetic}
+          </span>
+        </span>
+      )}
     </span>
   );
 };

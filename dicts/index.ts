@@ -11,7 +11,7 @@ import { DictionaryEntry } from '../types';
 type RawDictionary = { [key: string]: string };
 
 // 词典版本号，更新词典时递增此版本号以清除旧缓存
-const DICT_VERSION = '2.0.0'; // 更新版本号以清除 localStorage 旧缓存
+const DICT_VERSION = '2.1.0'; // 更新版本号以清除 localStorage 旧缓存
 
 // IndexedDB 配置
 const DICT_DB_NAME = 'NovelReaderDictDB';
@@ -44,10 +44,20 @@ export const parseDefinition = (definition: string | any): DictionaryEntry => {
     .replace(/\s+/g, ' ')  // 标准化空格
     .trim();
 
+  // 提取音标（格式：/phonetic/ 释义）
+  let phonetic: string | undefined = undefined;
+  let translation = cleanDef;
+
+  const phoneticMatch = cleanDef.match(/^\/([^/]+)\//);
+  if (phoneticMatch) {
+    phonetic = `/${phoneticMatch[1]}/`;  // 保留斜杠
+    translation = cleanDef.substring(phoneticMatch[0].length).trim();
+  }
+
   return {
-    translation: cleanDef,
-    phonetic: undefined,
-    definition: cleanDef
+    translation,
+    phonetic,
+    definition: translation
   };
 };
 
