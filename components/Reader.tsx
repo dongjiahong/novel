@@ -63,6 +63,13 @@ const Reader: React.FC<ReaderProps> = ({
   const [showChapterMenu, setShowChapterMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 触摸事件状态（移动端滑动翻页）
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+
+  // 最小滑动距离（像素）
+  const minSwipeDistance = 50;
+
   // 处理同步点击
   const handleSyncClick = () => {
     if (!isWebDAVConfigured) {
@@ -313,8 +320,12 @@ const Reader: React.FC<ReaderProps> = ({
     }
   };
 
-  // 处理内容区域点击事件，实现点击左右两侧翻页
+  // 处理内容区域点击事件，实现点击左右两侧翻页（仅PC端）
   const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // 只在PC端处理点击翻页
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) return;
+
     // 获取点击位置
     const clickX = e.clientX;
     const windowWidth = window.innerWidth;
@@ -328,6 +339,33 @@ const Reader: React.FC<ReaderProps> = ({
       goToNextPage();
     }
     // 中间区域：不做处理，保留原有的单词点击功能
+  };
+
+  // 处理触摸开始（移动端滑动翻页）
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(0); // 重置
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  // 处理触摸移动
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  // 处理触摸结束
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;  // 向左滑动 -> 下一页
+    const isRightSwipe = distance < -minSwipeDistance; // 向右滑动 -> 上一页
+
+    if (isLeftSwipe) {
+      goToNextPage();
+    }
+    if (isRightSwipe) {
+      goToPrevPage();
+    }
   };
 
   // 翻页时检查是否需要加载更多标注
@@ -717,7 +755,14 @@ const Reader: React.FC<ReaderProps> = ({
 
         {/* 内容区域 */}
         {hasActiveBook ? (
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto cursor-pointer" onClick={handleContentClick}>
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto cursor-pointer"
+          onClick={handleContentClick}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <div className="max-w-3xl mx-auto px-8 py-12 min-h-full pointer-events-none">
             <div className="pointer-events-auto">
               {processText(currentPageParagraphs)}
