@@ -170,7 +170,7 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
       title={isInNewWords ? "生词表 - 长按查看详情" : "长按查看详情"}
     >
       {/* 中文翻译 - 绝对定位在单词上方 */}
-      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-8px] flex flex-col items-center pointer-events-none z-10">
+      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-12px] flex flex-col items-center pointer-events-none z-10">
         <span className={`text-[10px] ${textColorClass} font-medium whitespace-nowrap leading-tight`}>
           {entry.translation?.split(/[,;]/).slice(0, 3).join(', ').substring(0, 24) || '...'}
         </span>
@@ -183,7 +183,7 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 
       {/* 音标 - 绝对定位在单词下方 */}
       {entry.phonetic && (
-        <span className="absolute left-1/2 -translate-x-1/2 top-full mt-[-20px] pointer-events-none z-10">
+        <span className="absolute left-1/2 -translate-x-1/2 top-full mt-[-34px] pointer-events-none z-10">
           <span className="text-[10px] text-gray-400 font-light whitespace-nowrap leading-tight">
             {entry.phonetic}
           </span>
