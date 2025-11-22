@@ -7,6 +7,7 @@ import { syncService } from './services/syncService';
 import { storageService } from './services/storageService';
 import { Loader2, BookOpen, RefreshCw } from 'lucide-react';
 import { WordProvider } from './context/WordContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { WordModal } from './components/WordModal';
 import { useReadingProgress } from './hooks/useReadingProgress';
 import { useWebDAVSync } from './hooks/useWebDAVSync';
@@ -469,7 +470,7 @@ function AppContent() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white relative">
+    <div className="flex h-screen w-full bg-white dark:bg-gray-800 relative">
 
       {/* Global Modal for Words */}
       <WordModal />
@@ -581,9 +582,11 @@ function AppContent() {
 
 function App() {
   return (
-    <WordProvider>
-      <AppContent />
-    </WordProvider>
+    <ThemeProvider>
+      <WordProvider>
+        <AppContent />
+      </WordProvider>
+    </ThemeProvider>
   );
 }
 

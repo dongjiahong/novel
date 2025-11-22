@@ -66,11 +66,13 @@ class SyncService {
     const userKnownWordsStr = localStorage.getItem('user_known_words');
     const excludedWordsStr = localStorage.getItem('excluded_words');
     const selectedLevel = localStorage.getItem('selected_vocabulary_level') || '';
+    const themeMode = localStorage.getItem('theme_mode') as 'light' | 'dark' | 'auto' | null;
 
     return {
       selectedVocabularyLevel: selectedLevel,
       userKnownWords: (userKnownWordsStr && userKnownWordsStr !== 'undefined' && userKnownWordsStr !== 'null') ? JSON.parse(userKnownWordsStr) : [],
       excludedWords: (excludedWordsStr && excludedWordsStr !== 'undefined' && excludedWordsStr !== 'null') ? JSON.parse(excludedWordsStr) : [],
+      themeMode: themeMode || undefined,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -106,10 +108,14 @@ class SyncService {
     const localTime = new Date(local.updatedAt);
     const remoteTime = new Date(remote.updatedAt);
 
-    // 词汇等级：取最新的
+    // 词汇等级和主题：取最新的
     const selectedVocabularyLevel = localTime > remoteTime
       ? local.selectedVocabularyLevel
       : remote.selectedVocabularyLevel;
+
+    const themeMode = localTime > remoteTime
+      ? local.themeMode
+      : remote.themeMode;
 
     // 已掌握单词和排除单词：取并集
     const userKnownWords = Array.from(
@@ -123,6 +129,7 @@ class SyncService {
       selectedVocabularyLevel,
       userKnownWords,
       excludedWords,
+      themeMode,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -399,6 +406,9 @@ class SyncService {
     localStorage.setItem('selected_vocabulary_level', config.selectedVocabularyLevel);
     localStorage.setItem('user_known_words', JSON.stringify(config.userKnownWords));
     localStorage.setItem('excluded_words', JSON.stringify(config.excludedWords));
+    if (config.themeMode) {
+      localStorage.setItem('theme_mode', config.themeMode);
+    }
 
     // 触发自定义事件通知配置已更新
     window.dispatchEvent(new CustomEvent('sync-config-updated'));

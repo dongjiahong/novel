@@ -6,14 +6,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>only reading</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // 配置 Tailwind CSS 启用 dark mode
+      tailwind.config = {
+        darkMode: 'class'
+      }
+    </script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap');
+
+      /* 主题颜色变量 */
+      :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f9fafb;
+        --bg-tertiary: #f3f4f6;
+        --text-primary: #111827;
+        --text-secondary: #6b7280;
+        --text-tertiary: #9ca3af;
+        --border-primary: #e5e7eb;
+        --border-secondary: #d1d5db;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      }
+
+      .dark {
+        --bg-primary: #1f2937;
+        --bg-secondary: #111827;
+        --bg-tertiary: #374151;
+        --text-primary: #f9fafb;
+        --text-secondary: #d1d5db;
+        --text-tertiary: #9ca3af;
+        --border-primary: #374151;
+        --border-secondary: #4b5563;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+      }
+
       body {
         font-family: 'Inter', sans-serif;
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
+
       .font-serif {
         font-family: 'Noto Serif', serif;
       }
+
       /* Hide scrollbar for cleaner look in sidebar */
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -35,7 +76,7 @@
 }
 </script>
 </head>
-  <body class="bg-gray-50 text-gray-900 h-screen overflow-hidden">
+  <body class="h-screen overflow-hidden">
     <div id="root" class="h-full"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

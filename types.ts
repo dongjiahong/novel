@@ -100,6 +100,7 @@ export interface UserConfig {
   selectedVocabularyLevel: string;
   userKnownWords: string[];
   excludedWords: string[];
+  themeMode?: 'light' | 'dark' | 'auto'; // 主题模式
   updatedAt: string; // ISO timestamp
 }
 
