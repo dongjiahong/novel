@@ -15,6 +15,7 @@ import {
 } from '../types';
 
 const DEVICE_ID_KEY = 'device_id';
+const SYNC_DIRTY_FLAGS_KEY = 'sync_dirty_flags';
 
 // 新的文件路径
 const CONFIG_PATH = '/novel-reader/config.json';
@@ -26,6 +27,96 @@ const BOOKS_DIR = '/novel-reader/books';
 
 // 旧的文件路径（用于数据迁移）
 const OLD_SYNC_DATA_PATH = '/novel-reader/data.json';
+
+/**
+ * 脏数据标记类型
+ */
+type SyncFileType = 'config' | 'booksMeta' | 'newWords' | 'readingProgress';
+
+/**
+ * 脏数据追踪管理器
+ * 用于标记本地数据的变更状态，实现增量同步
+ */
+class SyncDirtyFlags {
+  private flags: Record<SyncFileType, boolean>;
+
+  constructor() {
+    this.flags = this.load();
+  }
+
+  /**
+   * 从 localStorage 加载标记
+   */
+  private load(): Record<SyncFileType, boolean> {
+    try {
+      const stored = localStorage.getItem(SYNC_DIRTY_FLAGS_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('加载脏数据标记失败:', error);
+    }
+    return {
+      config: false,
+      booksMeta: false,
+      newWords: false,
+      readingProgress: false,
+    };
+  }
+
+  /**
+   * 保存标记到 localStorage
+   */
+  private save(): void {
+    localStorage.setItem(SYNC_DIRTY_FLAGS_KEY, JSON.stringify(this.flags));
+  }
+
+  /**
+   * 标记某个文件类型为"脏"（有变更）
+   */
+  set(type: SyncFileType): void {
+    this.flags[type] = true;
+    this.save();
+  }
+
+  /**
+   * 检查某个文件类型是否有变更
+   */
+  get(type: SyncFileType): boolean {
+    return this.flags[type];
+  }
+
+  /**
+   * 清除某个文件类型的脏标记
+   */
+  clear(type: SyncFileType): void {
+    this.flags[type] = false;
+    this.save();
+  }
+
+  /**
+   * 清除所有脏标记
+   */
+  clearAll(): void {
+    this.flags = {
+      config: false,
+      booksMeta: false,
+      newWords: false,
+      readingProgress: false,
+    };
+    this.save();
+  }
+
+  /**
+   * 获取所有有变更的文件类型
+   */
+  getDirtyTypes(): SyncFileType[] {
+    return (Object.keys(this.flags) as SyncFileType[]).filter(type => this.flags[type]);
+  }
+}
+
+// 导出脏数据标记管理器实例
+export const syncDirtyFlags = new SyncDirtyFlags();
 
 /**
  * 同步服务类 - 重构版
@@ -441,10 +532,67 @@ class SyncService {
     localStorage.setItem('books_meta', JSON.stringify(booksMeta.books));
   }
 
+  // ============ 增量同步逻辑 ============
+
+  /**
+   * 判断是否需要同步某个文件
+   * 基于本地脏标记和远程时间戳比较
+   */
+  private shouldSyncFile(
+    type: SyncFileType,
+    localTimestamp: string,
+    remoteTimestamp?: string
+  ): boolean {
+    // 如果本地有变更，必须同步
+    if (syncDirtyFlags.get(type)) {
+      return true;
+    }
+
+    // 如果远程没有数据，不需要下载
+    if (!remoteTimestamp) {
+      return false;
+    }
+
+    // 比较时间戳，如果远程更新则需要同步
+    const localTime = new Date(localTimestamp).getTime();
+    const remoteTime = new Date(remoteTimestamp).getTime();
+    return remoteTime > localTime;
+  }
+
+  /**
+   * 获取本地文件的时间戳
+   */
+  private getLocalTimestamp(type: SyncFileType): string {
+    try {
+      switch (type) {
+        case 'config': {
+          const config = localStorage.getItem('selected_vocabulary_level');
+          return config ? new Date().toISOString() : new Date(0).toISOString();
+        }
+        case 'booksMeta': {
+          const meta = localStorage.getItem('books_meta');
+          return meta ? new Date().toISOString() : new Date(0).toISOString();
+        }
+        case 'newWords': {
+          const words = localStorage.getItem('new_words_list');
+          return words ? new Date().toISOString() : new Date(0).toISOString();
+        }
+        case 'readingProgress': {
+          const progress = localStorage.getItem('reading_progress');
+          return progress ? new Date().toISOString() : new Date(0).toISOString();
+        }
+        default:
+          return new Date(0).toISOString();
+      }
+    } catch {
+      return new Date(0).toISOString();
+    }
+  }
+
   // ============ 完整同步流程 ============
 
   /**
-   * 完整同步流程：分别同步各个数据文件
+   * 增量同步流程：只同步有变更的数据文件
    */
   async performFullSync(
     localBooks: Book[],
@@ -456,9 +604,7 @@ class SyncService {
     error?: string;
   }> {
     try {
-      console.log('开始同步...');
-
-      const totalSteps = 5;
+      console.log('开始增量同步...');
 
       // 确保 books 目录存在
       try {
@@ -468,88 +614,171 @@ class SyncService {
         console.warn('创建 books 目录失败，但继续同步:', error);
       }
 
-      // 1. 同步用户配置
-      console.log('同步用户配置...');
-      onProgress?.({
-        currentStep: 'config',
-        totalSteps,
-        currentStepIndex: 1,
-        message: '正在同步用户配置',
-      });
+      // 获取远程同步元数据（用于时间戳比较）
+      let remoteSyncMeta: SyncMetadata | null = null;
+      try {
+        const exists = await webdavService.fileExists(SYNC_METADATA_PATH);
+        if (exists) {
+          const content = await webdavService.downloadFile(SYNC_METADATA_PATH);
+          remoteSyncMeta = JSON.parse(this.decodeContent(content)) as SyncMetadata;
+          console.log('远程同步元数据:', remoteSyncMeta.fileTimestamps);
+        }
+      } catch (error) {
+        console.warn('获取远程同步元数据失败:', error);
+      }
+
+      // 用于保存合并后的数据（需要在最后更新元数据时使用）
+      let mergedConfig: UserConfig;
+      let mergedBooksMeta: BooksMetaData;
+      let mergedNewWords: NewWordsData;
+      let mergedProgress: ReadingProgressData;
+
+      let currentStep = 0;
+      const totalSteps = 5;
+
+      // 1. 同步用户配置（如果需要）
       const localConfig = await this.collectLocalConfig();
-      const remoteConfig = await this.downloadConfig();
-      const mergedConfig = remoteConfig
-        ? this.mergeConfig(localConfig, remoteConfig)
-        : localConfig;
-      this.saveConfigToLocal(mergedConfig);
-      await this.uploadConfig(mergedConfig);
+      const localConfigTimestamp = this.getLocalTimestamp('config');
+      const needSyncConfig = this.shouldSyncFile(
+        'config',
+        localConfigTimestamp,
+        remoteSyncMeta?.fileTimestamps?.config
+      );
 
-      // 2. 同步书籍元数据
-      console.log('同步书籍元数据...');
-      onProgress?.({
-        currentStep: 'books-meta',
-        totalSteps,
-        currentStepIndex: 2,
-        message: '正在同步书籍元数据',
-      });
+      if (needSyncConfig) {
+        currentStep++;
+        console.log('同步用户配置...');
+        onProgress?.({
+          currentStep: 'config',
+          totalSteps,
+          currentStepIndex: currentStep,
+          message: '同步配置',
+        });
+        const remoteConfig = await this.downloadConfig();
+        mergedConfig = remoteConfig
+          ? this.mergeConfig(localConfig, remoteConfig)
+          : localConfig;
+        this.saveConfigToLocal(mergedConfig);
+        await this.uploadConfig(mergedConfig);
+        syncDirtyFlags.clear('config');
+      } else {
+        console.log('跳过用户配置同步（无变更）');
+        mergedConfig = localConfig;
+      }
+
+      // 2. 同步书籍元数据（如果需要）
       const localBooksMeta = await this.collectLocalBooksMeta(localBooks);
-      const remoteBooksMeta = await this.downloadBooksMeta();
-      const mergedBooksMeta = remoteBooksMeta
-        ? this.mergeBooksMeta(localBooksMeta, remoteBooksMeta)
-        : localBooksMeta;
-      this.saveBooksMetaToLocal(mergedBooksMeta);
-      await this.uploadBooksMeta(mergedBooksMeta);
+      const localBooksMetaTimestamp = this.getLocalTimestamp('booksMeta');
+      const needSyncBooksMeta = this.shouldSyncFile(
+        'booksMeta',
+        localBooksMetaTimestamp,
+        remoteSyncMeta?.fileTimestamps?.booksMeta
+      );
 
-      // 3. 同步生词表
-      console.log('同步生词表...');
-      onProgress?.({
-        currentStep: 'new-words',
-        totalSteps,
-        currentStepIndex: 3,
-        message: '正在同步生词表',
-      });
+      if (needSyncBooksMeta) {
+        currentStep++;
+        console.log('同步书籍元数据...');
+        onProgress?.({
+          currentStep: 'books-meta',
+          totalSteps,
+          currentStepIndex: currentStep,
+          message: '同步书籍列表',
+        });
+        const remoteBooksMeta = await this.downloadBooksMeta();
+        mergedBooksMeta = remoteBooksMeta
+          ? this.mergeBooksMeta(localBooksMeta, remoteBooksMeta)
+          : localBooksMeta;
+        this.saveBooksMetaToLocal(mergedBooksMeta);
+        await this.uploadBooksMeta(mergedBooksMeta);
+        syncDirtyFlags.clear('booksMeta');
+      } else {
+        console.log('跳过书籍元数据同步（无变更）');
+        mergedBooksMeta = localBooksMeta;
+      }
+
+      // 3. 同步生词表（如果需要）
       const localNewWords = await this.collectLocalNewWords();
-      const remoteNewWords = await this.downloadNewWords();
-      const mergedNewWords = remoteNewWords
-        ? this.mergeNewWords(localNewWords, remoteNewWords)
-        : localNewWords;
-      this.saveNewWordsToLocal(mergedNewWords);
-      await this.uploadNewWords(mergedNewWords);
+      const localNewWordsTimestamp = this.getLocalTimestamp('newWords');
+      const needSyncNewWords = this.shouldSyncFile(
+        'newWords',
+        localNewWordsTimestamp,
+        remoteSyncMeta?.fileTimestamps?.newWords
+      );
 
-      // 4. 同步阅读进度
-      console.log('同步阅读进度...');
-      onProgress?.({
-        currentStep: 'reading-progress',
-        totalSteps,
-        currentStepIndex: 4,
-        message: '正在同步阅读进度',
-      });
+      if (needSyncNewWords) {
+        currentStep++;
+        console.log('同步生词表...');
+        onProgress?.({
+          currentStep: 'new-words',
+          totalSteps,
+          currentStepIndex: currentStep,
+          message: '同步生词表',
+        });
+        const remoteNewWords = await this.downloadNewWords();
+        mergedNewWords = remoteNewWords
+          ? this.mergeNewWords(localNewWords, remoteNewWords)
+          : localNewWords;
+        this.saveNewWordsToLocal(mergedNewWords);
+        await this.uploadNewWords(mergedNewWords);
+        syncDirtyFlags.clear('newWords');
+      } else {
+        console.log('跳过生词表同步（无变更）');
+        mergedNewWords = localNewWords;
+      }
+
+      // 4. 同步阅读进度（如果需要）
       const localProgress = await this.collectLocalReadingProgress();
-      const remoteProgress = await this.downloadReadingProgress();
-      const mergedProgress = remoteProgress
-        ? this.mergeReadingProgress(localProgress, remoteProgress)
-        : localProgress;
-      this.saveReadingProgressToLocal(mergedProgress);
-      await this.uploadReadingProgress(mergedProgress);
+      const localProgressTimestamp = this.getLocalTimestamp('readingProgress');
+      const needSyncProgress = this.shouldSyncFile(
+        'readingProgress',
+        localProgressTimestamp,
+        remoteSyncMeta?.fileTimestamps?.readingProgress
+      );
+
+      if (needSyncProgress) {
+        currentStep++;
+        console.log('同步阅读进度...');
+        onProgress?.({
+          currentStep: 'reading-progress',
+          totalSteps,
+          currentStepIndex: currentStep,
+          message: '同步阅读进度',
+        });
+        const remoteProgress = await this.downloadReadingProgress();
+        mergedProgress = remoteProgress
+          ? this.mergeReadingProgress(localProgress, remoteProgress)
+          : localProgress;
+        this.saveReadingProgressToLocal(mergedProgress);
+        await this.uploadReadingProgress(mergedProgress);
+        syncDirtyFlags.clear('readingProgress');
+      } else {
+        console.log('跳过阅读进度同步（无变更）');
+        mergedProgress = localProgress;
+      }
 
       // 5. 同步书籍文件（只上传本地有但远程没有的书籍）
-      console.log('同步书籍文件...');
-      onProgress?.({
-        currentStep: 'book-files',
-        totalSteps,
-        currentStepIndex: 5,
-        message: '正在同步书籍文件',
-      });
-      for (const [bookId, fileContent] of bookFiles.entries()) {
-        const book = localBooks.find(b => b.id === bookId);
-        if (book) {
-          const extension = book.title.endsWith('.epub') ? '.epub' : '.txt';
-          const exists = await webdavService.fileExists(`${BOOKS_DIR}/${bookId}${extension}`);
-          if (!exists) {
-            console.log(`上传书籍: ${book.title}`);
-            await this.uploadBook(book, fileContent);
+      if (bookFiles.size > 0) {
+        currentStep++;
+        console.log('同步书籍文件...');
+        onProgress?.({
+          currentStep: 'book-files',
+          totalSteps,
+          currentStepIndex: currentStep,
+          message: '同步书籍文件',
+        });
+        for (const [bookId, fileContent] of bookFiles.entries()) {
+          const book = localBooks.find(b => b.id === bookId);
+          if (book) {
+            const extension = book.title.endsWith('.epub') ? '.epub' : '.txt';
+            const exists = await webdavService.fileExists(`${BOOKS_DIR}/${bookId}${extension}`);
+            if (!exists) {
+              console.log(`上传书籍: ${book.title}`);
+              await this.uploadBook(book, fileContent);
+            }
           }
         }
+      } else {
+        console.log('跳过书籍文件同步（无新书籍）');
       }
 
       // 6. 更新同步元数据
@@ -573,7 +802,7 @@ class SyncService {
         message: '同步完成',
       });
 
-      console.log('同步完成！');
+      console.log(`增量同步完成！实际同步步骤: ${currentStep}/${totalSteps}`);
       return {
         success: true,
         mergedBooksMeta,

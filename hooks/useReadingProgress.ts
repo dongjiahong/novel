@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ReadingProgress } from '../types';
+import { syncDirtyFlags } from '../services/syncService';
 
 const STORAGE_KEY = 'reading_progress';
 
@@ -80,6 +81,8 @@ export function useReadingProgress() {
         // 保存到 localStorage
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          // 标记阅读进度为脏数据
+          syncDirtyFlags.set('readingProgress');
         } catch (error) {
           console.error('保存阅读进度失败:', error);
         }
@@ -110,6 +113,8 @@ export function useReadingProgress() {
       const updated = prev.filter(p => p.bookId !== bookId);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        // 标记阅读进度为脏数据
+        syncDirtyFlags.set('readingProgress');
       } catch (error) {
         console.error('删除阅读进度失败:', error);
       }

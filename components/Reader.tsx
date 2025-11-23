@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Chapter, Book, SyncStatus } from '../types';
+import { Chapter, Book, SyncStatus, SyncProgress } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
 import { lookupWord, normalizeWord, wordsMatch } from '../services/dictionaryService';
@@ -22,6 +22,7 @@ interface ReaderProps {
   onAddBook: (file: File) => void;
   onDeleteBook: (id: string) => void;
   syncStatus?: SyncStatus;
+  syncProgress?: SyncProgress | null;
   onManualSync?: () => Promise<boolean>;
   isWebDAVConfigured?: boolean;
 }
@@ -48,6 +49,7 @@ const Reader: React.FC<ReaderProps> = ({
   onAddBook,
   onDeleteBook,
   syncStatus,
+  syncProgress,
   onManualSync,
   isWebDAVConfigured
 }) => {
@@ -522,6 +524,7 @@ const Reader: React.FC<ReaderProps> = ({
           onAddBook={onAddBook}
           onDeleteBook={onDeleteBook}
           syncStatus={syncStatus}
+          syncProgress={syncProgress}
           onManualSync={onManualSync}
           isWebDAVConfigured={isWebDAVConfigured}
         />

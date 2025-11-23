@@ -3,7 +3,7 @@ import Reader from './components/Reader';
 import { MOCK_BOOKS } from './constants';
 import { Book, BooksMetaData } from './types';
 import { parseFile } from './services/parserService';
-import { syncService } from './services/syncService';
+import { syncService, syncDirtyFlags } from './services/syncService';
 import { storageService } from './services/storageService';
 import { Loader2, BookOpen, RefreshCw } from 'lucide-react';
 import { WordProvider } from './context/WordContext';
@@ -385,6 +385,9 @@ function AppContent() {
           const updatedMeta = booksMeta.filter((book: any) => book.id !== id);
           localStorage.setItem('books_meta', JSON.stringify(updatedMeta));
           console.log(`已从 books_meta 中删除书籍 ${id}`);
+
+          // 标记书籍元数据为脏数据
+          syncDirtyFlags.set('booksMeta');
         }
       } catch (error) {
         console.error('清理 books_meta 失败:', error);
@@ -460,6 +463,9 @@ function AppContent() {
                 0
             );
         }
+
+        // 标记书籍元数据为脏数据
+        syncDirtyFlags.set('booksMeta');
     } catch (err: any) {
         console.error("Parsing error:", err);
         setErrorMsg(err.message || "解析文件失败");
@@ -552,6 +558,7 @@ function AppContent() {
                  onAddBook={handleAddBook}
                  onDeleteBook={handleDeleteBook}
                  syncStatus={syncStatus}
+                 syncProgress={syncProgress}
                  onManualSync={manualSync}
                  isWebDAVConfigured={isConfigured}
              />
@@ -571,6 +578,7 @@ function AppContent() {
                  onAddBook={handleAddBook}
                  onDeleteBook={handleDeleteBook}
                  syncStatus={syncStatus}
+                 syncProgress={syncProgress}
                  onManualSync={manualSync}
                  isWebDAVConfigured={isConfigured}
              />

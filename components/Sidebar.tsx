@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen, RefreshCw } from 'lucide-react';
-import { Book, Chapter, SyncStatus } from '../types';
+import { Book, Chapter, SyncStatus, SyncProgress } from '../types';
 import SettingsModal from './Settings';
 
 interface SidebarProps {
@@ -13,6 +13,7 @@ interface SidebarProps {
   onAddBook: (file: File) => void;
   onDeleteBook: (id: string) => void;
   syncStatus?: SyncStatus;
+  syncProgress?: SyncProgress | null;
   onManualSync?: () => Promise<boolean>;
   isWebDAVConfigured?: boolean;
 }
@@ -27,6 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onAddBook,
   onDeleteBook,
   syncStatus,
+  syncProgress,
   onManualSync,
   isWebDAVConfigured
 }) => {
@@ -90,6 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <SettingsModal
           onClose={() => setShowSettings(false)}
           syncStatus={syncStatus}
+          syncProgress={syncProgress}
           onManualSync={onManualSync}
         />
       )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NewWord } from '../types';
+import { syncDirtyFlags } from '../services/syncService';
 
 interface UseNewWordsListReturn {
   newWords: NewWord[];
@@ -43,6 +44,8 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
   const saveToStorage = useCallback((words: NewWord[]) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(words));
+      // 标记生词表为脏数据
+      syncDirtyFlags.set('newWords');
     } catch (err) {
       console.error('Failed to save new words list:', err);
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { VocabularyLevel } from '../types';
 import { VOCABULARY_LEVELS, DEFAULT_VOCABULARY_LEVEL } from '../constants';
+import { syncDirtyFlags } from '../services/syncService';
 
 interface UseVocabularyLevelReturn {
   currentLevel: VocabularyLevel | null;
@@ -65,6 +66,8 @@ export const useVocabularyLevel = (): UseVocabularyLevelReturn => {
 
       // 保存选择到 localStorage
       localStorage.setItem('selected_vocabulary_level', levelId);
+      // 标记配置为脏数据
+      syncDirtyFlags.set('config');
 
       console.log(`✅ 已加载词汇等级: ${level.name} (${words.size} 个单词)`);
     } catch (err) {

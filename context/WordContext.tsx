@@ -3,6 +3,7 @@ import { DictionaryEntry, VocabularyLevel, NewWord } from '../types';
 import { loadDictionary } from '../services/dictionaryService';
 import { useVocabularyLevel } from '../hooks/useVocabularyLevel';
 import { useNewWordsList } from '../hooks/useNewWordsList';
+import { syncDirtyFlags } from '../services/syncService';
 
 interface WordContextType {
   // 词典相关
@@ -184,6 +185,8 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return next;
     });
+    // 标记配置为脏数据
+    syncDirtyFlags.set('config');
   };
 
   /**
@@ -206,6 +209,8 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('excluded_words', JSON.stringify(Array.from(next)));
       return next;
     });
+    // 标记配置为脏数据
+    syncDirtyFlags.set('config');
   };
 
   /**

@@ -3,15 +3,16 @@ import { useWordContext } from '../context/WordContext';
 import { useTheme } from '../context/ThemeContext';
 import { X, Download, Trash2, BookOpen, CheckCircle, Cloud, RefreshCw, Loader2, Check, Sun, Moon, Monitor } from 'lucide-react';
 import { webdavService } from '../services/webdavService';
-import { WebDAVConfig, SyncStatus } from '../types';
+import { WebDAVConfig, SyncStatus, SyncProgress } from '../types';
 
 interface SettingsProps {
   onClose: () => void;
   syncStatus?: SyncStatus;
+  syncProgress?: SyncProgress | null;
   onManualSync?: () => Promise<boolean>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }) => {
+const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, onManualSync }) => {
   const {
     currentVocabularyLevel,
     availableLevels,
@@ -50,7 +51,12 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
 
   // WebDAV 配置处理函数
   const handleSaveWebDAVConfig = () => {
-    webdavService.saveConfig(webdavConfig);
+    // 自动拼接 URL
+    const configToSave = {
+      ...webdavConfig,
+      url: `${window.location.origin}/webdav-proxy/`
+    };
+    webdavService.saveConfig(configToSave);
     // 触发配置变化事件
     window.dispatchEvent(new Event('webdav-config-changed'));
     setConfigSaved(true);
@@ -61,8 +67,12 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
     setIsTesting(true);
     setTestResult(null);
 
-    // 先保存配置
-    webdavService.saveConfig(webdavConfig);
+    // 先保存配置（自动拼接 URL）
+    const configToSave = {
+      ...webdavConfig,
+      url: `${window.location.origin}/webdav-proxy/`
+    };
+    webdavService.saveConfig(configToSave);
     // 触发配置变化事件
     window.dispatchEvent(new Event('webdav-config-changed'));
 
@@ -340,18 +350,17 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
               </p>
 
               <div className="space-y-4">
-                {/* 服务器 URL */}
+                {/* 服务器 URL - 自动拼接展示 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    服务器 URL *
+                    服务器 URL
                   </label>
-                  <input
-                    type="url"
-                    value={webdavConfig.url}
-                    onChange={(e) => setWebdavConfig({ ...webdavConfig, url: e.target.value })}
-                    placeholder="https://example.com/webdav"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
-                  />
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+                    {`${window.location.origin}/webdav-proxy/`}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    WebDAV 服务地址（自动配置）
+                  </p>
                 </div>
 
                 {/* 用户名 */}
@@ -400,7 +409,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={handleSaveWebDAVConfig}
-                    disabled={!webdavConfig.url || !webdavConfig.username}
+                    disabled={!webdavConfig.username}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
                   >
                     {configSaved ? <Check size={16} /> : null}
@@ -409,7 +418,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
 
                   <button
                     onClick={handleTestConnection}
-                    disabled={!webdavConfig.url || !webdavConfig.username || isTesting}
+                    disabled={!webdavConfig.username || isTesting}
                     className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
                   >
                     {isTesting ? (
@@ -447,7 +456,9 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, onManualSync }
                         {syncStatus === 'syncing' && (
                           <>
                             <Loader2 className="animate-spin text-blue-600 dark:text-blue-400" size={16} />
-                            <span className="text-sm text-blue-600 dark:text-blue-400">正在同步...</span>
+                            <span className="text-sm text-blue-600 dark:text-blue-400">
+                              {syncProgress?.message || '同步中...'}
+                            </span>
                           </>
                         )}
                         {syncStatus === 'success' && (
