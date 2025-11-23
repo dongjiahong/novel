@@ -11,7 +11,7 @@ import { DictionaryEntry } from '../types';
 type RawDictionary = { [key: string]: string };
 
 // 词典版本号，更新词典时递增此版本号以清除旧缓存
-const DICT_VERSION = '2.1.0'; // 更新版本号以清除 localStorage 旧缓存
+const DICT_VERSION = '2.2.0'; // 更新版本号以清除 localStorage 旧缓存
 
 // IndexedDB 配置
 const DICT_DB_NAME = 'NovelReaderDictDB';
