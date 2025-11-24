@@ -736,19 +736,38 @@ class SyncService {
       switch (type) {
         case 'config': {
           const config = localStorage.getItem('selected_vocabulary_level');
+          // 配置没有 updatedAt,暂时用当前时间
           return config ? new Date().toISOString() : new Date(0).toISOString();
         }
         case 'booksMeta': {
           const meta = localStorage.getItem('books_meta');
+          // books_meta 也没有 updatedAt,暂时用当前时间
           return meta ? new Date().toISOString() : new Date(0).toISOString();
         }
         case 'newWords': {
           const words = localStorage.getItem('new_words_list');
+          // new_words_list 已废弃,使用 IndexedDB
           return words ? new Date().toISOString() : new Date(0).toISOString();
         }
         case 'readingProgress': {
-          const progress = localStorage.getItem('reading_progress');
-          return progress ? new Date().toISOString() : new Date(0).toISOString();
+          const progressStr = localStorage.getItem('reading_progress');
+          if (!progressStr || progressStr === 'undefined' || progressStr === 'null') {
+            return new Date(0).toISOString();
+          }
+          try {
+            const progressList = JSON.parse(progressStr) as ReadingProgress[];
+            if (progressList.length === 0) {
+              return new Date(0).toISOString();
+            }
+            // 返回所有进度中最新的 updatedAt
+            const latestTime = progressList.reduce((latest, p) => {
+              const pTime = new Date(p.updatedAt).getTime();
+              return pTime > latest ? pTime : latest;
+            }, 0);
+            return new Date(latestTime).toISOString();
+          } catch {
+            return new Date(0).toISOString();
+          }
         }
         default:
           return new Date(0).toISOString();
