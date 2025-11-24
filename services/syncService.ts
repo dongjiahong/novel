@@ -1,10 +1,13 @@
 import { webdavService } from './webdavService';
+import { storageService } from './storageService';
 import {
   Book,
   BookMetadata,
   BooksMetaData,
   NewWord,
   NewWordsData,
+  NewWordsPage,
+  NewWordsMetadata,
   ReadingProgress,
   ReadingProgressData,
   SyncMetadata,
@@ -20,10 +23,14 @@ const SYNC_DIRTY_FLAGS_KEY = 'sync_dirty_flags';
 // 新的文件路径
 const CONFIG_PATH = '/novel-reader/config.json';
 const BOOKS_META_PATH = '/novel-reader/books-meta.json';
-const NEW_WORDS_PATH = '/novel-reader/new-words.json';
+const NEW_WORDS_META_PATH = '/novel-reader/new-words-meta.json'; // 生词表元数据
+const NEW_WORDS_DIR = '/novel-reader/new-words'; // 生词表分页文件目录
 const READING_PROGRESS_PATH = '/novel-reader/reading-progress.json';
 const SYNC_METADATA_PATH = '/novel-reader/sync-metadata.json';
 const BOOKS_DIR = '/novel-reader/books';
+
+// 分页配置
+const NEW_WORDS_PAGE_SIZE = 300; // 每页 300 个生词
 
 // 旧的文件路径（用于数据迁移）
 const OLD_SYNC_DATA_PATH = '/novel-reader/data.json';
@@ -289,59 +296,192 @@ class SyncService {
     };
   }
 
-  // ============ 生词表同步 ============
+  // ============ 生词表同步（分页版本）============
 
   /**
-   * 收集本地生词表
+   * 上传生词表元数据
    */
-  async collectLocalNewWords(): Promise<NewWordsData> {
-    const newWordsStr = localStorage.getItem('new_words_list');
-    const newWords: NewWord[] = (newWordsStr && newWordsStr !== 'undefined' && newWordsStr !== 'null') ? JSON.parse(newWordsStr) : [];
-
-    return {
-      words: newWords,
-      updatedAt: new Date().toISOString(),
-    };
+  async uploadNewWordsMeta(metadata: NewWordsMetadata): Promise<void> {
+    const json = JSON.stringify(metadata, null, 2);
+    await webdavService.uploadFile(NEW_WORDS_META_PATH, json);
   }
 
   /**
-   * 上传生词表
+   * 下载生词表元数据
    */
-  async uploadNewWords(newWords: NewWordsData): Promise<void> {
-    const json = JSON.stringify(newWords, null, 2);
-    await webdavService.uploadFile(NEW_WORDS_PATH, json);
-  }
-
-  /**
-   * 下载生词表
-   */
-  async downloadNewWords(): Promise<NewWordsData | null> {
+  async downloadNewWordsMeta(): Promise<NewWordsMetadata | null> {
     try {
-      const exists = await webdavService.fileExists(NEW_WORDS_PATH);
+      const exists = await webdavService.fileExists(NEW_WORDS_META_PATH);
       if (!exists) return null;
 
-      const content = await webdavService.downloadFile(NEW_WORDS_PATH);
-      return JSON.parse(this.decodeContent(content)) as NewWordsData;
+      const content = await webdavService.downloadFile(NEW_WORDS_META_PATH);
+      return JSON.parse(this.decodeContent(content)) as NewWordsMetadata;
     } catch (error) {
-      console.error('下载生词表失败:', error);
+      console.error('下载生词表元数据失败:', error);
       return null;
     }
   }
 
   /**
-   * 合并生词表（按单词+书籍去重，保留最新的记录）
+   * 上传生词表分页数据
    */
-  mergeNewWords(local: NewWordsData, remote: NewWordsData): NewWordsData {
+  async uploadNewWordsPage(page: NewWordsPage): Promise<void> {
+    const filePath = `${NEW_WORDS_DIR}/page-${page.pageIndex}.json`;
+    const json = JSON.stringify(page, null, 2);
+    await webdavService.uploadFile(filePath, json);
+  }
+
+  /**
+   * 下载生词表分页数据
+   */
+  async downloadNewWordsPage(pageIndex: number): Promise<NewWordsPage | null> {
+    try {
+      const filePath = `${NEW_WORDS_DIR}/page-${pageIndex}.json`;
+      const exists = await webdavService.fileExists(filePath);
+      if (!exists) return null;
+
+      const content = await webdavService.downloadFile(filePath);
+      return JSON.parse(this.decodeContent(content)) as NewWordsPage;
+    } catch (error) {
+      console.error(`下载生词表第 ${pageIndex} 页失败:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * 收集本地生词表并构建元数据
+   */
+  async collectLocalNewWordsMeta(): Promise<NewWordsMetadata> {
+    const totalCount = await storageService.getNewWordsCount();
+    const totalPages = Math.ceil(totalCount / NEW_WORDS_PAGE_SIZE);
+
+    // 构建每页的元数据
+    const pages = [];
+    for (let i = 0; i < totalPages; i++) {
+      const offset = i * NEW_WORDS_PAGE_SIZE;
+      const pageWords = await storageService.loadNewWords(offset, NEW_WORDS_PAGE_SIZE);
+
+      // 计算该页最后更新时间（取该页所有生词中最新的时间）
+      let latestTime = new Date(0).toISOString();
+      pageWords.forEach(word => {
+        const wordTime = word.lastReviewedAt || word.firstSeenAt;
+        if (wordTime > latestTime) {
+          latestTime = wordTime;
+        }
+      });
+
+      pages.push({
+        pageIndex: i,
+        wordCount: pageWords.length,
+        updatedAt: latestTime,
+      });
+    }
+
+    return {
+      totalCount,
+      pageSize: NEW_WORDS_PAGE_SIZE,
+      totalPages,
+      pages,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * 同步生词表（分页版本）
+   */
+  async syncNewWords(onProgress?: (current: number, total: number) => void): Promise<void> {
+    try {
+      console.log('开始同步生词表（分页）...');
+
+      // 确保目录存在
+      await webdavService.ensureDirectory(NEW_WORDS_DIR);
+
+      // 1. 收集本地元数据
+      const localMeta = await this.collectLocalNewWordsMeta();
+      console.log(`本地生词表: ${localMeta.totalCount} 个，${localMeta.totalPages} 页`);
+
+      // 2. 下载远程元数据
+      const remoteMeta = await this.downloadNewWordsMeta();
+
+      if (!remoteMeta) {
+        // 远程没有数据，上传本地所有数据
+        console.log('远程无生词表，上传本地数据');
+        await this.uploadNewWordsMeta(localMeta);
+
+        for (let i = 0; i < localMeta.totalPages; i++) {
+          const offset = i * NEW_WORDS_PAGE_SIZE;
+          const words = await storageService.loadNewWords(offset, NEW_WORDS_PAGE_SIZE);
+          await this.uploadNewWordsPage({
+            pageIndex: i,
+            words,
+            updatedAt: localMeta.pages[i].updatedAt,
+          });
+          onProgress?.(i + 1, localMeta.totalPages);
+        }
+        return;
+      }
+
+      console.log(`远程生词表: ${remoteMeta.totalCount} 个，${remoteMeta.totalPages} 页`);
+
+      // 3. 比较并同步每一页
+      const allRemoteWords: NewWord[] = [];
+      const downloadedPages = new Set<number>();
+
+      // 下载远程所有页
+      for (let i = 0; i < remoteMeta.totalPages; i++) {
+        const remotePage = await this.downloadNewWordsPage(i);
+        if (remotePage) {
+          allRemoteWords.push(...remotePage.words);
+          downloadedPages.add(i);
+        }
+        onProgress?.(i + 1, remoteMeta.totalPages + localMeta.totalPages);
+      }
+
+      // 4. 下载本地所有生词并合并
+      const localWords = await storageService.loadNewWords(0);
+      const mergedWords = this.mergeNewWordsList(localWords, allRemoteWords);
+
+      // 5. 保存合并后的数据到本地
+      await storageService.saveAllNewWords(mergedWords);
+      console.log(`合并后生词数: ${mergedWords.length}`);
+
+      // 6. 重新生成元数据并上传
+      const newMeta = await this.collectLocalNewWordsMeta();
+      await this.uploadNewWordsMeta(newMeta);
+
+      // 7. 上传所有页
+      for (let i = 0; i < newMeta.totalPages; i++) {
+        const offset = i * NEW_WORDS_PAGE_SIZE;
+        const words = await storageService.loadNewWords(offset, NEW_WORDS_PAGE_SIZE);
+        await this.uploadNewWordsPage({
+          pageIndex: i,
+          words,
+          updatedAt: newMeta.pages[i].updatedAt,
+        });
+        onProgress?.(remoteMeta.totalPages + i + 1, remoteMeta.totalPages + newMeta.totalPages);
+      }
+
+      console.log('生词表同步完成');
+    } catch (error) {
+      console.error('生词表同步失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 合并生词列表（按单词去重，保留最新记录）
+   */
+  private mergeNewWordsList(local: NewWord[], remote: NewWord[]): NewWord[] {
     const wordsMap = new Map<string, NewWord>();
-    [...local.words, ...remote.words].forEach(word => {
-      const key = `${word.word}-${word.bookId || 'unknown'}`;
+
+    [...local, ...remote].forEach(word => {
+      const key = word.word.toLowerCase();
       const existing = wordsMap.get(key);
 
       if (!existing) {
-        // 如果不存在,直接添加
         wordsMap.set(key, word);
       } else {
-        // 如果存在,合并两个版本的数据,取最新的时间戳
+        // 合并两个版本的数据
         const merged: NewWord = {
           ...existing,
           ...word,
@@ -370,10 +510,7 @@ class SyncService {
       }
     });
 
-    return {
-      words: Array.from(wordsMap.values()),
-      updatedAt: new Date().toISOString(),
-    };
+    return Array.from(wordsMap.values());
   }
 
   // ============ 阅读进度同步 ============
@@ -536,10 +673,13 @@ class SyncService {
   }
 
   /**
-   * 保存生词表到本地
+   * 保存生词表到本地（已弃用，使用 IndexedDB）
    */
-  saveNewWordsToLocal(newWords: NewWordsData): void {
-    localStorage.setItem('new_words_list', JSON.stringify(newWords.words));
+  async saveNewWordsToLocal(words: NewWord[]): Promise<void> {
+    await storageService.saveAllNewWords(words);
+    // 触发自定义事件通知生词表已更新
+    window.dispatchEvent(new CustomEvent('sync-newwords-updated'));
+    console.log('📢 已触发生词表更新事件');
   }
 
   /**
@@ -659,7 +799,6 @@ class SyncService {
       // 用于保存合并后的数据（需要在最后更新元数据时使用）
       let mergedConfig: UserConfig;
       let mergedBooksMeta: BooksMetaData;
-      let mergedNewWords: NewWordsData;
       let mergedProgress: ReadingProgressData;
 
       let currentStep = 0;
@@ -725,35 +864,21 @@ class SyncService {
         mergedBooksMeta = localBooksMeta;
       }
 
-      // 3. 同步生词表（如果需要）
-      const localNewWords = await this.collectLocalNewWords();
-      const localNewWordsTimestamp = this.getLocalTimestamp('newWords');
-      const needSyncNewWords = this.shouldSyncFile(
-        'newWords',
-        localNewWordsTimestamp,
-        remoteSyncMeta?.fileTimestamps?.newWords
-      );
+      // 3. 同步生词表（分页版本）
+      currentStep++;
+      console.log('同步生词表（分页）...');
+      onProgress?.({
+        currentStep: 'new-words',
+        totalSteps,
+        currentStepIndex: currentStep,
+        message: '同步生词表',
+      });
 
-      if (needSyncNewWords) {
-        currentStep++;
-        console.log('同步生词表...');
-        onProgress?.({
-          currentStep: 'new-words',
-          totalSteps,
-          currentStepIndex: currentStep,
-          message: '同步生词表',
-        });
-        const remoteNewWords = await this.downloadNewWords();
-        mergedNewWords = remoteNewWords
-          ? this.mergeNewWords(localNewWords, remoteNewWords)
-          : localNewWords;
-        this.saveNewWordsToLocal(mergedNewWords);
-        await this.uploadNewWords(mergedNewWords);
-        syncDirtyFlags.clear('newWords');
-      } else {
-        console.log('跳过生词表同步（无变更）');
-        mergedNewWords = localNewWords;
-      }
+      await this.syncNewWords((current, total) => {
+        // 可以在这里更新进度，但为了简化先不显示子进度
+      });
+
+      syncDirtyFlags.clear('newWords');
 
       // 4. 同步阅读进度（如果需要）
       const localProgress = await this.collectLocalReadingProgress();
@@ -811,13 +936,14 @@ class SyncService {
       }
 
       // 6. 更新同步元数据
+      const newWordsMeta = await this.downloadNewWordsMeta();
       const metadata: SyncMetadata = {
         lastSyncAt: new Date().toISOString(),
         deviceId: this.getDeviceId(),
         fileTimestamps: {
           config: mergedConfig.updatedAt,
           booksMeta: mergedBooksMeta.updatedAt,
-          newWords: mergedNewWords.updatedAt,
+          newWords: newWordsMeta?.updatedAt || new Date().toISOString(),
           readingProgress: mergedProgress.updatedAt,
         },
       };

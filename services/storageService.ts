@@ -1,10 +1,11 @@
-import { Book } from '../types';
+import { Book, NewWord } from '../types';
 
 // IndexedDB 数据库名称和版本
 const DB_NAME = 'NovelReaderDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // 升级版本以添加生词表
 const BOOKS_STORE = 'books';
 const FILES_STORE = 'book_files';
+const NEW_WORDS_STORE = 'new_words';
 
 class StorageService {
   private db: IDBDatabase | null = null;
@@ -45,6 +46,17 @@ class StorageService {
         if (!db.objectStoreNames.contains(FILES_STORE)) {
           db.createObjectStore(FILES_STORE);
           console.log('创建文件对象存储');
+        }
+
+        // 创建生词表存储
+        if (!db.objectStoreNames.contains(NEW_WORDS_STORE)) {
+          const newWordsStore = db.createObjectStore(NEW_WORDS_STORE, { keyPath: 'word' });
+          // 创建索引用于快速查询
+          newWordsStore.createIndex('bookId', 'bookId', { unique: false });
+          newWordsStore.createIndex('firstSeenAt', 'firstSeenAt', { unique: false });
+          newWordsStore.createIndex('isMarkedDifficult', 'isMarkedDifficult', { unique: false });
+          newWordsStore.createIndex('masteredAt', 'masteredAt', { unique: false });
+          console.log('创建生词表对象存储及索引');
         }
       };
     });
@@ -214,6 +226,204 @@ class StorageService {
     } catch (error) {
       console.error('删除书籍失败:', error);
       throw error;
+    }
+  }
+
+  // ============ 生词表操作 ============
+
+  // 添加或更新单个生词
+  async saveNewWord(word: NewWord): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([NEW_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(NEW_WORDS_STORE);
+      store.put(word);
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('保存生词失败:', error);
+      throw error;
+    }
+  }
+
+  // 批量保存生词（替换所有数据）
+  async saveAllNewWords(words: NewWord[]): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([NEW_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(NEW_WORDS_STORE);
+
+      // 清空现有数据
+      store.clear();
+
+      // 保存所有生词
+      for (const word of words) {
+        store.put(word);
+      }
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => {
+          console.log(`成功保存 ${words.length} 个生词到 IndexedDB`);
+          resolve();
+        };
+        transaction.onerror = () => {
+          console.error('批量保存生词失败:', transaction.error);
+          reject(transaction.error);
+        };
+      });
+    } catch (error) {
+      console.error('批量保存生词失败:', error);
+      throw error;
+    }
+  }
+
+  // 获取所有生词（支持分页）
+  async loadNewWords(offset: number = 0, limit?: number): Promise<NewWord[]> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([NEW_WORDS_STORE], 'readonly');
+      const store = transaction.objectStore(NEW_WORDS_STORE);
+      const index = store.index('firstSeenAt'); // 按时间排序
+      const request = index.openCursor(null, 'prev'); // 倒序（最新的在前）
+
+      return new Promise((resolve, reject) => {
+        const words: NewWord[] = [];
+        let count = 0;
+        let skipped = 0;
+
+        request.onsuccess = (event) => {
+          const cursor = (event.target as IDBRequest).result;
+          if (cursor) {
+            // 跳过前 offset 条
+            if (skipped < offset) {
+              skipped++;
+              cursor.continue();
+              return;
+            }
+
+            // 如果有 limit，检查是否已达到限制
+            if (limit && count >= limit) {
+              resolve(words);
+              return;
+            }
+
+            words.push(cursor.value as NewWord);
+            count++;
+            cursor.continue();
+          } else {
+            // 没有更多数据
+            resolve(words);
+          }
+        };
+
+        request.onerror = () => {
+          console.error('加载生词失败:', request.error);
+          reject(request.error);
+        };
+      });
+    } catch (error) {
+      console.error('从 IndexedDB 加载生词失败:', error);
+      return [];
+    }
+  }
+
+  // 获取生词总数
+  async getNewWordsCount(): Promise<number> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([NEW_WORDS_STORE], 'readonly');
+      const store = transaction.objectStore(NEW_WORDS_STORE);
+      const request = store.count();
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('获取生词数量失败:', error);
+      return 0;
+    }
+  }
+
+  // 删除指定生词
+  async deleteNewWord(word: string): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([NEW_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(NEW_WORDS_STORE);
+      store.delete(word);
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('删除生词失败:', error);
+      throw error;
+    }
+  }
+
+  // 清空所有生词
+  async clearNewWords(): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([NEW_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(NEW_WORDS_STORE);
+      store.clear();
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => {
+          console.log('已清空所有生词');
+          resolve();
+        };
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('清空生词失败:', error);
+      throw error;
+    }
+  }
+
+  // 获取指定时间戳之后更新的生词（用于增量同步）
+  async getNewWordsAfter(timestamp: string): Promise<NewWord[]> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([NEW_WORDS_STORE], 'readonly');
+      const store = transaction.objectStore(NEW_WORDS_STORE);
+      const request = store.getAll();
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+          const allWords = request.result as NewWord[];
+          // 筛选出时间戳大于指定值的生词
+          const filteredWords = allWords.filter(word => {
+            const wordTime = word.lastReviewedAt || word.firstSeenAt;
+            return wordTime > timestamp;
+          });
+          resolve(filteredWords);
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('获取增量生词失败:', error);
+      return [];
     }
   }
 }

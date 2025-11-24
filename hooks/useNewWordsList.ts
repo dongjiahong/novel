@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NewWord } from '../types';
 import { syncDirtyFlags } from '../services/syncService';
+import { storageService } from '../services/storageService';
 
 interface UseNewWordsListReturn {
   newWords: NewWord[];
@@ -11,104 +12,142 @@ interface UseNewWordsListReturn {
   totalCount: number;
   markWordAsMastered: (word: string) => void;
   markWordAsDifficult: (word: string) => void;
+  loadMore: () => void;
+  hasMore: boolean;
 }
 
-const STORAGE_KEY = 'new_words_list';
+const PAGE_SIZE = 50; // 每次加载 50 个生词用于显示
 
 /**
  * Hook for managing new words list (生词表)
+ * 使用 IndexedDB 存储，支持分页加载
  */
 export const useNewWordsList = (): UseNewWordsListReturn => {
   const [newWords, setNewWords] = useState<NewWord[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(0);
 
   /**
-   * 从 localStorage 加载生词表
+   * 从 IndexedDB 加载生词表（首次加载）
    */
-  useEffect(() => {
+  const loadInitialWords = useCallback(async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && stored !== 'undefined' && stored !== 'null') {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setNewWords(parsed);
-          console.log(`📖 已加载 ${parsed.length} 个生词`);
-        }
+      const words = await storageService.loadNewWords(0, PAGE_SIZE);
+      const count = await storageService.getNewWordsCount();
+      setNewWords(words);
+      setTotalCount(count);
+      setCurrentPage(1);
+      console.log(`📖 已加载 ${words.length}/${count} 个生词`);
+    } catch (err) {
+      console.error('加载生词表失败:', err);
+    }
+  }, []);
+
+  /**
+   * 加载更多生词
+   */
+  const loadMore = useCallback(async () => {
+    try {
+      const offset = currentPage * PAGE_SIZE;
+      const moreWords = await storageService.loadNewWords(offset, PAGE_SIZE);
+      if (moreWords.length > 0) {
+        setNewWords(prev => [...prev, ...moreWords]);
+        setCurrentPage(prev => prev + 1);
+        console.log(`📖 加载了更多 ${moreWords.length} 个生词`);
       }
     } catch (err) {
-      console.error('Failed to load new words list:', err);
-      localStorage.removeItem(STORAGE_KEY);
+      console.error('加载更多生词失败:', err);
     }
-  }, []);
+  }, [currentPage]);
 
   /**
-   * 保存生词表到 localStorage
+   * 初始加载
    */
-  const saveToStorage = useCallback((words: NewWord[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(words));
-      // 标记生词表为脏数据
-      syncDirtyFlags.set('newWords');
-    } catch (err) {
-      console.error('Failed to save new words list:', err);
-    }
-  }, []);
+  useEffect(() => {
+    loadInitialWords();
+  }, [loadInitialWords]);
+
+  /**
+   * 监听同步更新事件
+   */
+  useEffect(() => {
+    const handleSyncUpdate = () => {
+      console.log('📢 收到生词表同步更新通知，重新加载数据');
+      loadInitialWords();
+    };
+
+    window.addEventListener('sync-newwords-updated', handleSyncUpdate);
+    return () => {
+      window.removeEventListener('sync-newwords-updated', handleSyncUpdate);
+    };
+  }, [loadInitialWords]);
 
   /**
    * 添加新生词
    */
-  const addNewWord = useCallback((word: NewWord) => {
-    setNewWords(prev => {
-      // 检查是否已存在（同一个单词）
-      const exists = prev.some(
+  const addNewWord = useCallback(async (word: NewWord) => {
+    try {
+      // 先查找是否存在
+      const existingWords = await storageService.loadNewWords(0);
+      const existing = existingWords.find(
         w => w.word.toLowerCase() === word.word.toLowerCase()
       );
 
-      if (exists) {
-        // 更新复习次数和例句
-        const updated = prev.map(w => {
-          if (w.word.toLowerCase() === word.word.toLowerCase()) {
-            return {
-              ...w,
-              reviewCount: w.reviewCount + 1,
-              lastReviewedAt: new Date().toISOString(),
-              // 如果有新的例句，更新例句
-              sentence: word.sentence || w.sentence
-            };
-          }
-          return w;
-        });
-        saveToStorage(updated);
-        return updated;
+      if (existing) {
+        // 更新现有生词
+        const updated: NewWord = {
+          ...existing,
+          reviewCount: existing.reviewCount + 1,
+          lastReviewedAt: new Date().toISOString(),
+          sentence: word.sentence || existing.sentence,
+        };
+        await storageService.saveNewWord(updated);
+        console.log(`🔄 更新生词 "${word.word}"`);
       } else {
         // 添加新生词
-        const updated = [...prev, word];
-        saveToStorage(updated);
+        await storageService.saveNewWord(word);
         console.log(`➕ 添加生词 "${word.word}"`);
-        return updated;
       }
-    });
-  }, [saveToStorage]);
+
+      // 标记为脏数据
+      syncDirtyFlags.set('newWords');
+
+      // 重新加载生词列表
+      await loadInitialWords();
+    } catch (err) {
+      console.error('添加生词失败:', err);
+    }
+  }, [loadInitialWords]);
 
   /**
    * 删除生词
    */
-  const removeNewWord = useCallback((word: string) => {
-    setNewWords(prev => {
-      const updated = prev.filter(
-        w => w.word.toLowerCase() !== word.toLowerCase()
-      );
-      saveToStorage(updated);
-      return updated;
-    });
-  }, [saveToStorage]);
+  const removeNewWord = useCallback(async (word: string) => {
+    try {
+      await storageService.deleteNewWord(word);
+      syncDirtyFlags.set('newWords');
+      await loadInitialWords();
+      console.log(`🗑️ 删除生词 "${word}"`);
+    } catch (err) {
+      console.error('删除生词失败:', err);
+    }
+  }, [loadInitialWords]);
 
   /**
    * 清空生词表
    */
-  const clearNewWords = useCallback(() => {
-    setNewWords([]);
-    saveToStorage([]);
-  }, [saveToStorage]);
+  const clearNewWords = useCallback(async () => {
+    try {
+      await storageService.clearNewWords();
+      syncDirtyFlags.set('newWords');
+      setNewWords([]);
+      setTotalCount(0);
+      setCurrentPage(0);
+      console.log('🗑️ 已清空生词表');
+    } catch (err) {
+      console.error('清空生词表失败:', err);
+    }
+  }, []);
 
   /**
    * 导出生词表为文本文件
@@ -153,44 +192,58 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
    * 标记单词为已掌握
    * 更新 lastReviewedAt 和 masteredAt 时间戳
    */
-  const markWordAsMastered = useCallback((word: string) => {
-    setNewWords(prev => {
-      const updated = prev.map(w => {
-        if (w.word.toLowerCase() === word.toLowerCase()) {
-          return {
-            ...w,
-            lastReviewedAt: new Date().toISOString(),
-            masteredAt: new Date().toISOString()
-          };
-        }
-        return w;
-      });
-      saveToStorage(updated);
-      return updated;
-    });
-  }, [saveToStorage]);
+  const markWordAsMastered = useCallback(async (word: string) => {
+    try {
+      const existingWords = await storageService.loadNewWords(0);
+      const existing = existingWords.find(
+        w => w.word.toLowerCase() === word.toLowerCase()
+      );
+
+      if (existing) {
+        const updated: NewWord = {
+          ...existing,
+          lastReviewedAt: new Date().toISOString(),
+          masteredAt: new Date().toISOString(),
+        };
+        await storageService.saveNewWord(updated);
+        syncDirtyFlags.set('newWords');
+        await loadInitialWords();
+        console.log(`✅ 标记生词 "${word}" 为已掌握`);
+      }
+    } catch (err) {
+      console.error('标记生词为已掌握失败:', err);
+    }
+  }, [loadInitialWords]);
 
   /**
    * 标记单词为困难词
    * 设置 isMarkedDifficult = true, 更新 reviewCount
    */
-  const markWordAsDifficult = useCallback((word: string) => {
-    setNewWords(prev => {
-      const updated = prev.map(w => {
-        if (w.word.toLowerCase() === word.toLowerCase()) {
-          return {
-            ...w,
-            isMarkedDifficult: true,
-            reviewCount: w.reviewCount + 1,
-            lastReviewedAt: new Date().toISOString()
-          };
-        }
-        return w;
-      });
-      saveToStorage(updated);
-      return updated;
-    });
-  }, [saveToStorage]);
+  const markWordAsDifficult = useCallback(async (word: string) => {
+    try {
+      const existingWords = await storageService.loadNewWords(0);
+      const existing = existingWords.find(
+        w => w.word.toLowerCase() === word.toLowerCase()
+      );
+
+      if (existing) {
+        const updated: NewWord = {
+          ...existing,
+          isMarkedDifficult: true,
+          reviewCount: existing.reviewCount + 1,
+          lastReviewedAt: new Date().toISOString(),
+        };
+        await storageService.saveNewWord(updated);
+        syncDirtyFlags.set('newWords');
+        await loadInitialWords();
+        console.log(`⚠️ 标记生词 "${word}" 为困难词`);
+      }
+    } catch (err) {
+      console.error('标记生词为困难词失败:', err);
+    }
+  }, [loadInitialWords]);
+
+  const hasMore = newWords.length < totalCount;
 
   return {
     newWords,
@@ -198,8 +251,10 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
     removeNewWord,
     clearNewWords,
     exportNewWords,
-    totalCount: newWords.length,
+    totalCount,
     markWordAsMastered,
-    markWordAsDifficult
+    markWordAsDifficult,
+    loadMore,
+    hasMore,
   };
 };

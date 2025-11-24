@@ -112,10 +112,30 @@ export interface BooksMetaData {
   updatedAt: string; // ISO timestamp
 }
 
-// 生词表数据
+// 生词表数据（单页）
 export interface NewWordsData {
   words: NewWord[];
   updatedAt: string; // ISO timestamp
+}
+
+// 生词表分页数据
+export interface NewWordsPage {
+  pageIndex: number; // 页码（从 0 开始）
+  words: NewWord[];
+  updatedAt: string; // ISO timestamp
+}
+
+// 生词表元数据（用于分页同步）
+export interface NewWordsMetadata {
+  totalCount: number; // 生词总数
+  pageSize: number; // 每页生词数
+  totalPages: number; // 总页数
+  pages: {
+    pageIndex: number;
+    wordCount: number;
+    updatedAt: string; // 该页最后更新时间
+  }[];
+  updatedAt: string; // 元数据最后更新时间
 }
 
 // 阅读进度数据
@@ -132,7 +152,7 @@ export interface SyncMetadata {
   fileTimestamps?: {
     config?: string;
     booksMeta?: string;
-    newWords?: string;
+    newWords?: string; // 生词表元数据的更新时间
     readingProgress?: string;
   };
 }
