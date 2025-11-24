@@ -161,15 +161,15 @@ class SyncService {
    * 收集本地用户配置
    */
   async collectLocalConfig(): Promise<UserConfig> {
-    const userKnownWordsStr = localStorage.getItem('user_known_words');
-    const excludedWordsStr = localStorage.getItem('excluded_words');
+    const userKnownWords = await storageService.loadKnownWords();
+    const excludedWords = await storageService.loadExcludedWords();
     const selectedLevel = localStorage.getItem('selected_vocabulary_level') || '';
     const themeMode = localStorage.getItem('theme_mode') as 'light' | 'dark' | 'auto' | null;
 
     return {
       selectedVocabularyLevel: selectedLevel,
-      userKnownWords: (userKnownWordsStr && userKnownWordsStr !== 'undefined' && userKnownWordsStr !== 'null') ? JSON.parse(userKnownWordsStr) : [],
-      excludedWords: (excludedWordsStr && excludedWordsStr !== 'undefined' && excludedWordsStr !== 'null') ? JSON.parse(excludedWordsStr) : [],
+      userKnownWords,
+      excludedWords,
       themeMode: themeMode || undefined,
       updatedAt: new Date().toISOString(),
     };
@@ -659,10 +659,10 @@ class SyncService {
   /**
    * 保存配置到本地
    */
-  saveConfigToLocal(config: UserConfig): void {
+  async saveConfigToLocal(config: UserConfig): Promise<void> {
     localStorage.setItem('selected_vocabulary_level', config.selectedVocabularyLevel);
-    localStorage.setItem('user_known_words', JSON.stringify(config.userKnownWords));
-    localStorage.setItem('excluded_words', JSON.stringify(config.excludedWords));
+    await storageService.saveKnownWords(config.userKnownWords);
+    await storageService.saveExcludedWords(config.excludedWords);
     if (config.themeMode) {
       localStorage.setItem('theme_mode', config.themeMode);
     }
@@ -823,7 +823,37 @@ class SyncService {
       let currentStep = 0;
       const totalSteps = 5;
 
-      // 1. 同步用户配置（如果需要）
+      // 1. 优先同步阅读进度（如果需要）
+      const localProgress = await this.collectLocalReadingProgress();
+      const localProgressTimestamp = this.getLocalTimestamp('readingProgress');
+      const needSyncProgress = this.shouldSyncFile(
+        'readingProgress',
+        localProgressTimestamp,
+        remoteSyncMeta?.fileTimestamps?.readingProgress
+      );
+
+      if (needSyncProgress) {
+        currentStep++;
+        console.log('同步阅读进度（优先）...');
+        onProgress?.({
+          currentStep: 'reading-progress',
+          totalSteps,
+          currentStepIndex: currentStep,
+          message: '同步阅读进度',
+        });
+        const remoteProgress = await this.downloadReadingProgress();
+        mergedProgress = remoteProgress
+          ? this.mergeReadingProgress(localProgress, remoteProgress)
+          : localProgress;
+        this.saveReadingProgressToLocal(mergedProgress);
+        await this.uploadReadingProgress(mergedProgress);
+        syncDirtyFlags.clear('readingProgress');
+      } else {
+        console.log('跳过阅读进度同步（无变更）');
+        mergedProgress = localProgress;
+      }
+
+      // 2. 同步用户配置（如果需要）
       const localConfig = await this.collectLocalConfig();
       const localConfigTimestamp = this.getLocalTimestamp('config');
       const needSyncConfig = this.shouldSyncFile(
@@ -845,7 +875,7 @@ class SyncService {
         mergedConfig = remoteConfig
           ? this.mergeConfig(localConfig, remoteConfig)
           : localConfig;
-        this.saveConfigToLocal(mergedConfig);
+        await this.saveConfigToLocal(mergedConfig);
         await this.uploadConfig(mergedConfig);
         syncDirtyFlags.clear('config');
       } else {
@@ -853,7 +883,7 @@ class SyncService {
         mergedConfig = localConfig;
       }
 
-      // 2. 同步书籍元数据（如果需要）
+      // 3. 同步书籍元数据（如果需要）
       const localBooksMeta = await this.collectLocalBooksMeta(localBooks);
       const localBooksMetaTimestamp = this.getLocalTimestamp('booksMeta');
       const needSyncBooksMeta = this.shouldSyncFile(
@@ -883,7 +913,7 @@ class SyncService {
         mergedBooksMeta = localBooksMeta;
       }
 
-      // 3. 同步生词表（分页版本）
+      // 4. 同步生词表（分页版本）
       currentStep++;
       console.log('同步生词表（分页）...');
       onProgress?.({
@@ -898,36 +928,6 @@ class SyncService {
       });
 
       syncDirtyFlags.clear('newWords');
-
-      // 4. 同步阅读进度（如果需要）
-      const localProgress = await this.collectLocalReadingProgress();
-      const localProgressTimestamp = this.getLocalTimestamp('readingProgress');
-      const needSyncProgress = this.shouldSyncFile(
-        'readingProgress',
-        localProgressTimestamp,
-        remoteSyncMeta?.fileTimestamps?.readingProgress
-      );
-
-      if (needSyncProgress) {
-        currentStep++;
-        console.log('同步阅读进度...');
-        onProgress?.({
-          currentStep: 'reading-progress',
-          totalSteps,
-          currentStepIndex: currentStep,
-          message: '同步阅读进度',
-        });
-        const remoteProgress = await this.downloadReadingProgress();
-        mergedProgress = remoteProgress
-          ? this.mergeReadingProgress(localProgress, remoteProgress)
-          : localProgress;
-        this.saveReadingProgressToLocal(mergedProgress);
-        await this.uploadReadingProgress(mergedProgress);
-        syncDirtyFlags.clear('readingProgress');
-      } else {
-        console.log('跳过阅读进度同步（无变更）');
-        mergedProgress = localProgress;
-      }
 
       // 5. 同步书籍文件（只上传本地有但远程没有的书籍）
       if (bookFiles.size > 0) {

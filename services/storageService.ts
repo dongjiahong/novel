@@ -2,10 +2,12 @@ import { Book, NewWord } from '../types';
 
 // IndexedDB 数据库名称和版本
 const DB_NAME = 'NovelReaderDB';
-const DB_VERSION = 2; // 升级版本以添加生词表
+const DB_VERSION = 3; // 升级版本以添加 known words 和 excluded words
 const BOOKS_STORE = 'books';
 const FILES_STORE = 'book_files';
 const NEW_WORDS_STORE = 'new_words';
+const KNOWN_WORDS_STORE = 'known_words';
+const EXCLUDED_WORDS_STORE = 'excluded_words';
 
 class StorageService {
   private db: IDBDatabase | null = null;
@@ -57,6 +59,18 @@ class StorageService {
           newWordsStore.createIndex('isMarkedDifficult', 'isMarkedDifficult', { unique: false });
           newWordsStore.createIndex('masteredAt', 'masteredAt', { unique: false });
           console.log('创建生词表对象存储及索引');
+        }
+
+        // 创建已掌握单词存储
+        if (!db.objectStoreNames.contains(KNOWN_WORDS_STORE)) {
+          db.createObjectStore(KNOWN_WORDS_STORE);
+          console.log('创建已掌握单词对象存储');
+        }
+
+        // 创建排除单词存储
+        if (!db.objectStoreNames.contains(EXCLUDED_WORDS_STORE)) {
+          db.createObjectStore(EXCLUDED_WORDS_STORE);
+          console.log('创建排除单词对象存储');
         }
       };
     });
@@ -424,6 +438,210 @@ class StorageService {
     } catch (error) {
       console.error('获取增量生词失败:', error);
       return [];
+    }
+  }
+
+  // ============ 已掌握单词操作 ============
+
+  // 批量保存已掌握单词（替换所有数据）
+  async saveKnownWords(words: string[]): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([KNOWN_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(KNOWN_WORDS_STORE);
+
+      // 清空现有数据
+      store.clear();
+
+      // 保存所有单词（以单词为 key，值为 true）
+      for (const word of words) {
+        store.put(true, word);
+      }
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => {
+          console.log(`成功保存 ${words.length} 个已掌握单词到 IndexedDB`);
+          resolve();
+        };
+        transaction.onerror = () => {
+          console.error('批量保存已掌握单词失败:', transaction.error);
+          reject(transaction.error);
+        };
+      });
+    } catch (error) {
+      console.error('批量保存已掌握单词失败:', error);
+      throw error;
+    }
+  }
+
+  // 加载所有已掌握单词
+  async loadKnownWords(): Promise<string[]> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([KNOWN_WORDS_STORE], 'readonly');
+      const store = transaction.objectStore(KNOWN_WORDS_STORE);
+      const request = store.getAllKeys();
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+          const words = request.result as string[];
+          console.log(`从 IndexedDB 加载了 ${words.length} 个已掌握单词`);
+          resolve(words);
+        };
+        request.onerror = () => {
+          console.error('加载已掌握单词失败:', request.error);
+          reject(request.error);
+        };
+      });
+    } catch (error) {
+      console.error('从 IndexedDB 加载已掌握单词失败:', error);
+      return [];
+    }
+  }
+
+  // 添加单个已掌握单词
+  async addKnownWord(word: string): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([KNOWN_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(KNOWN_WORDS_STORE);
+      store.put(true, word);
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('添加已掌握单词失败:', error);
+      throw error;
+    }
+  }
+
+  // 删除单个已掌握单词
+  async removeKnownWord(word: string): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([KNOWN_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(KNOWN_WORDS_STORE);
+      store.delete(word);
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('删除已掌握单词失败:', error);
+      throw error;
+    }
+  }
+
+  // ============ 排除单词操作 ============
+
+  // 批量保存排除单词（替换所有数据）
+  async saveExcludedWords(words: string[]): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([EXCLUDED_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(EXCLUDED_WORDS_STORE);
+
+      // 清空现有数据
+      store.clear();
+
+      // 保存所有单词（以单词为 key，值为 true）
+      for (const word of words) {
+        store.put(true, word);
+      }
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => {
+          console.log(`成功保存 ${words.length} 个排除单词到 IndexedDB`);
+          resolve();
+        };
+        transaction.onerror = () => {
+          console.error('批量保存排除单词失败:', transaction.error);
+          reject(transaction.error);
+        };
+      });
+    } catch (error) {
+      console.error('批量保存排除单词失败:', error);
+      throw error;
+    }
+  }
+
+  // 加载所有排除单词
+  async loadExcludedWords(): Promise<string[]> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([EXCLUDED_WORDS_STORE], 'readonly');
+      const store = transaction.objectStore(EXCLUDED_WORDS_STORE);
+      const request = store.getAllKeys();
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+          const words = request.result as string[];
+          console.log(`从 IndexedDB 加载了 ${words.length} 个排除单词`);
+          resolve(words);
+        };
+        request.onerror = () => {
+          console.error('加载排除单词失败:', request.error);
+          reject(request.error);
+        };
+      });
+    } catch (error) {
+      console.error('从 IndexedDB 加载排除单词失败:', error);
+      return [];
+    }
+  }
+
+  // 添加单个排除单词
+  async addExcludedWord(word: string): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([EXCLUDED_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(EXCLUDED_WORDS_STORE);
+      store.put(true, word);
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('添加排除单词失败:', error);
+      throw error;
+    }
+  }
+
+  // 删除单个排除单词
+  async removeExcludedWord(word: string): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([EXCLUDED_WORDS_STORE], 'readwrite');
+      const store = transaction.objectStore(EXCLUDED_WORDS_STORE);
+      store.delete(word);
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('删除排除单词失败:', error);
+      throw error;
     }
   }
 }
