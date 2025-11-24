@@ -82,6 +82,8 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 
     // 阻止事件冒泡，避免触发翻页
     e.stopPropagation();
+    // 阻止默认行为，避免移动端触发系统选择菜单
+    e.preventDefault();
 
     const timer = setTimeout(() => {
       const sentence = extractSentence(paragraph, cleanWord);
@@ -98,6 +100,19 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
       clearTimeout(longPressTimer);
       setLongPressTimer(null);
     }
+  };
+
+  // 移动端滑动时取消长按
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  // 阻止右键菜单
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
   };
 
   // 清理定时器
@@ -123,12 +138,19 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   if (isKnown) {
     return (
       <span
-        className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-0.5 transition-colors select-text"
+        className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-0.5 transition-colors select-none"
+        style={{
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+          touchAction: 'manipulation'
+        }}
         onMouseDown={handlePressStart}
         onMouseUp={handlePressEnd}
         onMouseLeave={handlePressEnd}
         onTouchStart={handlePressStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handlePressEnd}
+        onContextMenu={handleContextMenu}
         title="长按查看详情"
       >
         {original}
@@ -141,12 +163,19 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
     const hoverBgClass = isInNewWords ? 'hover:bg-purple-50 dark:hover:bg-purple-900/30' : 'hover:bg-orange-50 dark:hover:bg-orange-900/30';
     return (
       <span
-        className={`cursor-pointer ${hoverBgClass} rounded px-0.5 transition-colors`}
+        className={`cursor-pointer ${hoverBgClass} rounded px-0.5 transition-colors select-none`}
+        style={{
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+          touchAction: 'manipulation'
+        }}
         onMouseDown={handlePressStart}
         onMouseUp={handlePressEnd}
         onMouseLeave={handlePressEnd}
         onTouchStart={handlePressStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handlePressEnd}
+        onContextMenu={handleContextMenu}
       >
         {original}
       </span>
@@ -161,12 +190,19 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 
   return (
     <span
-      className="relative inline-block cursor-pointer group select-text"
+      className="relative inline-block cursor-pointer group select-none"
+      style={{
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        touchAction: 'manipulation'
+      }}
       onMouseDown={handlePressStart}
       onMouseUp={handlePressEnd}
       onMouseLeave={handlePressEnd}
       onTouchStart={handlePressStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handlePressEnd}
+      onContextMenu={handleContextMenu}
       title={isInNewWords ? "生词表 - 长按查看详情" : "长按查看详情"}
     >
       {/* 中文翻译 - 绝对定位在单词上方 */}

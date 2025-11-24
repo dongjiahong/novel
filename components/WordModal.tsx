@@ -1,6 +1,6 @@
 import React from 'react';
 import { useWordContext } from '../context/WordContext';
-import { X, Check, BookMarked, XCircle } from 'lucide-react';
+import { X, Check, BookMarked, XCircle, Volume2 } from 'lucide-react';
 
 export const WordModal: React.FC = () => {
   const {
@@ -63,14 +63,44 @@ export const WordModal: React.FC = () => {
     setInteractingWord(null);
   };
 
+  // 播放发音
+  const playPronunciation = (type: 'uk' | 'us') => {
+    const audioType = type === 'uk' ? 1 : 0;
+    const audio = new Audio(`https://dict.youdao.com/dictvoice?type=${audioType}&audio=${word}`);
+    audio.play().catch(err => {
+      console.error('发音播放失败:', err);
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
 
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 px-6 py-4 border-b border-blue-100 dark:border-gray-700 flex justify-between items-start">
-          <div>
-            <h3 className="text-2xl font-serif font-bold text-blue-900 dark:text-blue-100">{word}</h3>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-2xl font-serif font-bold text-blue-900 dark:text-blue-100">{word}</h3>
+              {/* 发音按钮 */}
+              <div className="flex gap-1">
+                <button
+                  onClick={() => playPronunciation('uk')}
+                  className="group flex items-center gap-0.5 px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-800/50 hover:bg-blue-200 dark:hover:bg-blue-700/50 transition-all hover:scale-105 active:scale-95"
+                  title="播放英音"
+                >
+                  <Volume2 size={14} className="text-blue-600 dark:text-blue-300" />
+                  <span className="text-xs font-medium text-blue-600 dark:text-blue-300">UK</span>
+                </button>
+                <button
+                  onClick={() => playPronunciation('us')}
+                  className="group flex items-center gap-0.5 px-2 py-1 rounded-md bg-purple-100 dark:bg-purple-800/50 hover:bg-purple-200 dark:hover:bg-purple-700/50 transition-all hover:scale-105 active:scale-95"
+                  title="播放美音"
+                >
+                  <Volume2 size={14} className="text-purple-600 dark:text-purple-300" />
+                  <span className="text-xs font-medium text-purple-600 dark:text-purple-300">US</span>
+                </button>
+              </div>
+            </div>
             {entry.phonetic && (
               <p className="text-sm text-blue-600 dark:text-blue-300 mt-1 font-mono">{entry.phonetic}</p>
             )}
