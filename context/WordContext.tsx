@@ -30,6 +30,8 @@ interface WordContextType {
   clearNewWords: () => void;
   exportNewWords: () => void;
   checkIsInNewWords: (word: string) => boolean;
+  markWordAsMastered: (word: string) => void;
+  markWordAsDifficult: (word: string) => void;
 
   // 单词弹窗交互
   interactingWord: { word: string; entry: DictionaryEntry; sentence?: string } | null;
@@ -60,7 +62,9 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addNewWord,
     removeNewWord,
     clearNewWords,
-    exportNewWords
+    exportNewWords,
+    markWordAsMastered,
+    markWordAsDifficult
   } = useNewWordsList();
 
 
@@ -302,6 +306,8 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearNewWords,
         exportNewWords,
         checkIsInNewWords,
+        markWordAsMastered,
+        markWordAsDifficult,
         interactingWord,
         setInteractingWord
       }}

@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen, RefreshCw } from 'lucide-react';
+import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen, RefreshCw, GraduationCap } from 'lucide-react';
 import { Book, Chapter, SyncStatus, SyncProgress } from '../types';
 import SettingsModal from './Settings';
+import { VocabularyModal } from './VocabularyModal';
+import { useWordContext } from '../context/WordContext';
 
 interface SidebarProps {
   books: Book[];
@@ -35,7 +37,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isLibraryOpen, setLibraryOpen] = useState(true);
   const [isTocOpen, setTocOpen] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showVocabulary, setShowVocabulary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { newWords } = useWordContext();
+
+  // 计算未学习单词数量
+  const unstudiedCount = newWords.filter(w => !w.lastReviewedAt).length;
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -76,6 +83,20 @@ const Sidebar: React.FC<SidebarProps> = ({
             <RefreshCw size={20} />
          </button>
 
+         {/* 生词本按钮 */}
+         <button
+           onClick={() => setShowVocabulary(true)}
+           className="relative p-2 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 hover:text-purple-700 dark:hover:text-purple-300 transition-colors rounded-md"
+           title="生词本"
+         >
+            <GraduationCap size={20} />
+            {unstudiedCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {unstudiedCount > 99 ? '99+' : unstudiedCount}
+              </span>
+            )}
+         </button>
+
          <div className="mt-auto pb-4">
              <button
                onClick={() => setShowSettings(true)}
@@ -96,6 +117,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           onManualSync={onManualSync}
         />
       )}
+
+      {/* Vocabulary Modal */}
+      <VocabularyModal
+        isOpen={showVocabulary}
+        onClose={() => setShowVocabulary(false)}
+      />
 
       {/* Middle Left: File Tree */}
       <div className="w-64 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col text-sm">

@@ -3,9 +3,10 @@ import { Chapter, Book, SyncStatus, SyncProgress } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
 import { lookupWord, normalizeWord, wordsMatch } from '../services/dictionaryService';
-import { Settings, RefreshCw, BookOpen, List, Plus, Trash2 } from 'lucide-react';
+import { Settings, RefreshCw, BookOpen, List, Plus, Trash2, GraduationCap } from 'lucide-react';
 import SettingsModal from './Settings';
 import Sidebar from './Sidebar';
+import { VocabularyModal } from './VocabularyModal';
 
 interface ReaderProps {
   chapter: Chapter;
@@ -63,7 +64,11 @@ const Reader: React.FC<ReaderProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [showBookMenu, setShowBookMenu] = useState(false);
   const [showChapterMenu, setShowChapterMenu] = useState(false);
+  const [showVocabulary, setShowVocabulary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 计算未学习单词数量
+  const unstudiedCount = newWords.filter(w => !w.lastReviewedAt).length;
 
   // 触摸事件状态（移动端滑动翻页）
   const [touchStart, setTouchStart] = useState(0);
@@ -680,7 +685,7 @@ const Reader: React.FC<ReaderProps> = ({
             {currentPage + 1}/{totalPages}
           </span>
 
-          {/* 右侧：同步和设置按钮 - 只在移动端显示，桌面端在侧边栏 */}
+          {/* 右侧：同步、生词本和设置按钮 - 只在移动端显示，桌面端在侧边栏 */}
           <div className="flex items-center gap-1 md:hidden">
           <button
             onClick={handleSyncClick}
@@ -693,6 +698,19 @@ const Reader: React.FC<ReaderProps> = ({
             disabled={syncStatus === 'syncing'}
           >
             <RefreshCw size={18} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+          </button>
+
+          <button
+            onClick={() => setShowVocabulary(true)}
+            className="relative p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors"
+            title="生词本"
+          >
+            <GraduationCap size={18} />
+            {unstudiedCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+                {unstudiedCount > 99 ? '99' : unstudiedCount}
+              </span>
+            )}
           </button>
 
           <button
@@ -755,6 +773,12 @@ const Reader: React.FC<ReaderProps> = ({
             onManualSync={onManualSync}
           />
         )}
+
+        {/* Vocabulary Modal */}
+        <VocabularyModal
+          isOpen={showVocabulary}
+          onClose={() => setShowVocabulary(false)}
+        />
 
         {/* 内容区域 */}
         {hasActiveBook ? (

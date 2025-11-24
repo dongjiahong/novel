@@ -43,6 +43,8 @@ export interface NewWord {
   reviewCount: number;
   lastReviewedAt?: string;
   bookId?: string; // 关联的书籍ID
+  isMarkedDifficult?: boolean; // 标记为困难词
+  masteredAt?: string; // ISO timestamp - 掌握时间
 }
 
 // WebDAV 配置

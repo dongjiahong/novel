@@ -9,6 +9,8 @@ interface UseNewWordsListReturn {
   clearNewWords: () => void;
   exportNewWords: () => void;
   totalCount: number;
+  markWordAsMastered: (word: string) => void;
+  markWordAsDifficult: (word: string) => void;
 }
 
 const STORAGE_KEY = 'new_words_list';
@@ -147,12 +149,57 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
     console.log(`✅ 已导出 ${newWords.length} 个生词`);
   }, [newWords]);
 
+  /**
+   * 标记单词为已掌握
+   * 更新 lastReviewedAt 和 masteredAt 时间戳
+   */
+  const markWordAsMastered = useCallback((word: string) => {
+    setNewWords(prev => {
+      const updated = prev.map(w => {
+        if (w.word.toLowerCase() === word.toLowerCase()) {
+          return {
+            ...w,
+            lastReviewedAt: new Date().toISOString(),
+            masteredAt: new Date().toISOString()
+          };
+        }
+        return w;
+      });
+      saveToStorage(updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
+  /**
+   * 标记单词为困难词
+   * 设置 isMarkedDifficult = true, 更新 reviewCount
+   */
+  const markWordAsDifficult = useCallback((word: string) => {
+    setNewWords(prev => {
+      const updated = prev.map(w => {
+        if (w.word.toLowerCase() === word.toLowerCase()) {
+          return {
+            ...w,
+            isMarkedDifficult: true,
+            reviewCount: w.reviewCount + 1,
+            lastReviewedAt: new Date().toISOString()
+          };
+        }
+        return w;
+      });
+      saveToStorage(updated);
+      return updated;
+    });
+  }, [saveToStorage]);
+
   return {
     newWords,
     addNewWord,
     removeNewWord,
     clearNewWords,
     exportNewWords,
-    totalCount: newWords.length
+    totalCount: newWords.length,
+    markWordAsMastered,
+    markWordAsDifficult
   };
 };
