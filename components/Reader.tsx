@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useDrag } from '@use-gesture/react';
 import { Chapter, Book, SyncStatus, SyncProgress } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
@@ -69,13 +70,6 @@ const Reader: React.FC<ReaderProps> = ({
 
   // 计算未学习单词数量
   const unstudiedCount = newWords.filter(w => !w.lastReviewedAt).length;
-
-  // 触摸事件状态（移动端滑动翻页）
-  const [touchStart, setTouchStart] = useState(0);
-  const [touchEnd, setTouchEnd] = useState(0);
-
-  // 最小滑动距离（像素）
-  const minSwipeDistance = 50;
 
   // 处理同步点击
   const handleSyncClick = () => {
@@ -348,32 +342,38 @@ const Reader: React.FC<ReaderProps> = ({
     // 中间区域：不做处理，保留原有的单词点击功能
   };
 
-  // 处理触摸开始（移动端滑动翻页）
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(0); // 重置
-    setTouchStart(e.targetTouches[0].clientX);
-  };
+  // 使用 useDrag hook 来处理移动端滑动翻页
+  const bind = useDrag(
+    ({ swipe: [swipeX], tap, event }) => {
+      // 如果是点击事件，或者点击的目标是交互式元素（如单词弹窗），则不执行翻页
+      if (
+        tap ||
+        (event?.target &&
+          (event.target as HTMLElement).closest(
+            'a, button, [data-interactive="true"]'
+          ))
+      ) {
+        return;
+      }
 
-  // 处理触摸移动
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  // 处理触摸结束
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;  // 向左滑动 -> 下一页
-    const isRightSwipe = distance < -minSwipeDistance; // 向右滑动 -> 上一页
-
-    if (isLeftSwipe) {
-      goToNextPage();
+      // 根据滑动方向调用翻页函数
+      if (swipeX === -1) { // 向左滑动 (swipe left) -> 下一页
+        goToNextPage();
+      } else if (swipeX === 1) { // 向右滑动 (swipe right) -> 上一页
+        goToPrevPage();
+      }
+    },
+    {
+      axis: 'x', // 只在 x 轴方向触发
+      swipe: {
+        velocity: 0.2, // 滑动速度阈值
+        distance: 30,  // 滑动距离阈值
+      },
+      filterTaps: true, // 过滤掉点击事件
+      eventOptions: { passive: false }, // 允许阻止默认事件（如果需要）
     }
-    if (isRightSwipe) {
-      goToPrevPage();
-    }
-  };
+  );
+
 
   // 翻页时检查是否需要加载更多标注
   useEffect(() => {
@@ -786,9 +786,7 @@ const Reader: React.FC<ReaderProps> = ({
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto cursor-pointer"
           onClick={handleContentClick}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          {...bind()}
         >
           <div className="max-w-3xl mx-auto px-8 py-12 min-h-full pointer-events-none">
             <div className="pointer-events-auto">
