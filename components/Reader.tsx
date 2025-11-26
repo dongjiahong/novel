@@ -728,7 +728,7 @@ const Reader: React.FC<ReaderProps> = ({
         {!hasActiveBook && (
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between shadow-sm flex-shrink-0 md:hidden">
           <div className="flex items-center gap-2">
-            <BookOpen size={20} className="text-gray-400 dark:text-gray-500" />
+            <img src="/logo.svg" alt="Logo" className="w-6 h-6" />
             <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">E-Book Lingo Reader</span>
           </div>
 

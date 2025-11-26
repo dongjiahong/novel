@@ -69,6 +69,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     <div className="h-full flex bg-white dark:bg-gray-800 shadow-lg">
       {/* Far Left: Icon Strip */}
       <div className="w-12 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col items-center py-4 gap-6 z-20">
+         {/* Logo */}
+         <div className="w-8 h-8 flex items-center justify-center shrink-0">
+             <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
+         </div>
+
          {/* 手动同步按钮 */}
          <button
            onClick={handleSyncClick}
