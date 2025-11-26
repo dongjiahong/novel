@@ -220,7 +220,7 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * 检查单词是否已掌握
    * 包括：词汇等级的单词 + 用户手动标记的单词 - 用户排除的单词
    */
-  const checkIsKnown = (word: string) => {
+  const checkIsKnown = useCallback((word: string) => {
     const lower = word.toLowerCase();
 
     // 先检查是否在排除列表中
@@ -275,15 +275,15 @@ export const WordProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return false;
-  };
+  }, [knownWords, excludedWords]);
 
   /**
    * 检查单词是否在生词表中
    */
-  const checkIsInNewWords = (word: string) => {
+  const checkIsInNewWords = useCallback((word: string) => {
     const lower = word.toLowerCase();
     return newWords.some(w => w.word.toLowerCase() === lower);
-  };
+  }, [newWords]);
 
   return (
     <WordContext.Provider
