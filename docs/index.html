@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novel - 沉浸式英语阅读助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        /* Custom scrollbar for screenshots if needed */
+        .hide-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .screenshot-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .screenshot-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased selection:bg-blue-500 selection:text-white">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 glass border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex-shrink-0 flex items-center gap-2">
+                    <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">Novel</span>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-600">Beta</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#features" class="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">功能特性</a>
+                    <a href="#gallery" class="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">界面预览</a>
+                    <a href="#guide" class="text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium">使用指南</a>
+                    <a href="https://github.com/dongjiahong/novel" target="_blank" class="text-gray-600 hover:text-black transition-colors">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" /></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <h1 class="text-5xl md:text-7xl font-extrabold text-gray-900 tracking-tight mb-8">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">读懂</span> 每一行代码之外的世界
+            </h1>
+            <p class="mt-4 text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+                专为英语学习者打造的沉浸式阅读器。智能生词高亮、即时翻译、WebDAV 多端同步，让阅读不再有障碍。
+            </p>
+            <div class="flex justify-center gap-4 mb-16">
+                <a href="https://github.com/dongjiahong/novel" target="_blank" class="px-8 py-4 bg-blue-600 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-700 transition-all transform hover:-translate-y-1">
+                    GitHub 源码
+                </a>
+                <a href="#features" class="px-8 py-4 bg-white text-gray-700 border border-gray-200 font-semibold rounded-xl shadow-sm hover:bg-gray-50 transition-all">
+                    了解功能
+                </a>
+            </div>
+            
+            <!-- Hero Image with Browser Frame -->
+            <div class="relative max-w-5xl mx-auto">
+                <div class="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-20"></div>
+                <div class="relative rounded-xl overflow-hidden shadow-2xl border border-gray-200 bg-white">
+                    <div class="h-8 bg-gray-50 border-b border-gray-200 flex items-center px-4 space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-red-400"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-400"></div>
+                    </div>
+                    <img src="./images/home.jpg" alt="App Screenshot" class="w-full h-auto">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Background blobs -->
+        <div class="absolute top-0 left-1/2 w-full -translate-x-1/2 h-full -z-10 opacity-30 pointer-events-none">
+            <div class="absolute top-20 left-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+            <div class="absolute top-20 right-20 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+            <div class="absolute -bottom-8 left-1/2 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <section id="features" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-base text-blue-600 font-semibold tracking-wide uppercase">核心功能</h2>
+                <p class="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+                    不仅是阅读，更是学习
+                </p>
+                <p class="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
+                    集成了词典、生词本和同步功能，打造一体化的英语阅读环境。
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <!-- Feature 1 -->
+                <div class="p-8 rounded-2xl bg-gray-50 hover:bg-blue-50 transition-colors duration-300">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">智能格式解析</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        完美支持 EPUB 和 TXT 格式。自动智能分页，根据屏幕尺寸调整段落，提供纸质书般的阅读体验。
+                    </p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="p-8 rounded-2xl bg-gray-50 hover:bg-purple-50 transition-colors duration-300">
+                    <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">生词智能高亮</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        根据 CET-4、CET-6、TOEFL 等等级自动标注生词。点击即可查词，自动加入生词本，告别频繁查字典的烦恼。
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="p-8 rounded-2xl bg-gray-50 hover:bg-green-50 transition-colors duration-300">
+                    <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">WebDAV 云同步</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        支持 WebDAV 协议，书籍、阅读进度、生词本多端无缝同步。在手机、平板和电脑间自由切换，学习进度不丢失。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshot Gallery -->
+    <section id="gallery" class="py-24 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-extrabold text-gray-900">界面预览</h2>
+                <p class="mt-4 text-lg text-gray-500">简洁优雅的设计，专注于阅读体验</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="screenshot-card group relative rounded-2xl overflow-hidden shadow-xl bg-white">
+                    <div class="aspect-w-16 aspect-h-9">
+                        <img src="./images/new_words.jpg" alt="New Words" class="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900">生词管理</h3>
+                        <p class="text-sm text-gray-500 mt-2">清晰的生词列表，支持按时间排序，方便复习。</p>
+                    </div>
+                </div>
+                
+                <div class="screenshot-card group relative rounded-2xl overflow-hidden shadow-xl bg-white">
+                    <div class="aspect-w-16 aspect-h-9">
+                        <img src="./images/webdav.jpg" alt="WebDAV Sync" class="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900">同步设置</h3>
+                        <p class="text-sm text-gray-500 mt-2">简单直观的 WebDAV 配置，一键同步所有数据。</p>
+                    </div>
+                </div>
+                
+                <div class="screenshot-card group relative rounded-2xl overflow-hidden shadow-xl bg-white md:col-span-2 lg:col-span-1">
+                    <div class="aspect-w-16 aspect-h-9">
+                        <img src="./images/mobile.jpg" alt="Mobile View" class="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900">移动端适配</h3>
+                        <p class="text-sm text-gray-500 mt-2">完美适配移动设备，随时随地开启阅读。</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card group relative rounded-2xl overflow-hidden shadow-xl bg-white md:col-span-2 lg:col-span-1">
+                    <div class="aspect-w-16 aspect-h-9">
+                        <img src="./images/setting.jpg" alt="Settings" class="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900">个性化设置</h3>
+                        <p class="text-sm text-gray-500 mt-2">支持字体、字号、主题色及词汇等级的深度定制。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation Guide -->
+    <section id="guide" class="py-24 bg-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-extrabold text-gray-900">开始使用</h2>
+                <p class="mt-4 text-lg text-gray-500">只需几步，即可搭建你自己的阅读环境</p>
+            </div>
+
+            <div class="space-y-12">
+                <!-- Step 1 -->
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold text-xl">1</div>
+                    </div>
+                    <div class="ml-6">
+                        <h3 class="text-xl font-bold text-gray-900">克隆项目</h3>
+                        <div class="mt-4 bg-gray-800 rounded-lg p-4 overflow-x-auto">
+                            <code class="text-gray-100 text-sm font-mono">git clone https://github.com/dongjiahong/novel.git<br>cd novel</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold text-xl">2</div>
+                    </div>
+                    <div class="ml-6">
+                        <h3 class="text-xl font-bold text-gray-900">安装依赖</h3>
+                        <div class="mt-4 bg-gray-800 rounded-lg p-4 overflow-x-auto">
+                            <code class="text-gray-100 text-sm font-mono">npm install</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold text-xl">3</div>
+                    </div>
+                    <div class="ml-6">
+                        <h3 class="text-xl font-bold text-gray-900">启动运行</h3>
+                        <div class="mt-4 bg-gray-800 rounded-lg p-4 overflow-x-auto">
+                            <code class="text-gray-100 text-sm font-mono">npm run dev</code>
+                        </div>
+                        <p class="mt-2 text-gray-600">打开浏览器访问 <span class="font-mono text-blue-600 bg-blue-50 px-1 rounded">http://localhost:3000</span> 即可。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-16 p-6 bg-yellow-50 border border-yellow-100 rounded-xl">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-yellow-800">注意事项</h3>
+                        <div class="mt-2 text-sm text-yellow-700">
+                            <p>
+                                若需要跨设备同步功能，请确保配置正确的 WebDAV 服务地址。推荐使用支持 WebDAV 的网盘服务（如坚果云、TeraCloud 等）。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-2xl font-bold mb-4">Novel</p>
+            <p class="text-gray-400 text-sm mb-8">Made with ❤️ for English learners</p>
+            <div class="flex justify-center space-x-6 mb-8">
+                <a href="https://github.com/dongjiahong/novel" class="text-gray-400 hover:text-white transition-colors">
+                    GitHub
+                </a>
+                <a href="https://github.com/dongjiahong/novel/blob/main/LICENSE" class="text-gray-400 hover:text-white transition-colors">
+                    License
+                </a>
+            </div>
+            <p class="text-gray-500 text-xs">
+                &copy; 2025 Project Novel. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+</body>
+</html>
