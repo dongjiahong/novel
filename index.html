@@ -63,6 +63,40 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
+
+      /* Custom Animations */
+      .animate-in {
+        animation-duration: 0.3s;
+        animation-timing-function: ease-out;
+        animation-fill-mode: both;
+      }
+
+      .fade-in {
+        animation-name: fadeIn;
+      }
+
+      .slide-in-from-bottom-2 {
+        animation-name: slideInFromBottom2;
+      }
+      
+      .slide-in-from-top-1 {
+        animation-name: slideInFromTop1;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes slideInFromBottom2 {
+        from { transform: translateY(0.5rem); }
+        to { transform: translateY(0); }
+      }
+
+      @keyframes slideInFromTop1 {
+        from { transform: translateY(-0.25rem); }
+        to { transform: translateY(0); }
+      }
     </style>
   <script type="importmap">
 {

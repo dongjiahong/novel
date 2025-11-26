@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useWordContext } from '../context/WordContext';
-import { X, Volume2, Eye, EyeOff } from 'lucide-react';
+import { X, Volume2, Eye, EyeOff, BookOpen, CheckCircle2, AlertCircle, BrainCircuit, ChevronDown, ChevronUp } from 'lucide-react';
 import { NewWord } from '../types';
 
 interface VocabularyModalProps {
@@ -11,6 +11,7 @@ interface VocabularyModalProps {
 export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClose }) => {
   const { newWords, markWordAsMastered, markWordAsDifficult } = useWordContext();
   const [revealedWords, setRevealedWords] = useState<Set<string>>(new Set());
+  const [expandedSentences, setExpandedSentences] = useState<Set<string>>(new Set());
   const [displayCount, setDisplayCount] = useState(20);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const [pressingWord, setPressingWord] = useState<string | null>(null);
@@ -51,7 +52,8 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
   }, [newWords]);
 
   // 播放发音
-  const playPronunciation = (word: string, type: 'uk' | 'us') => {
+  const playPronunciation = (e: React.MouseEvent, word: string, type: 'uk' | 'us') => {
+    e.stopPropagation(); // 防止触发卡片点击
     const audioType = type === 'uk' ? 1 : 0;
     const audio = new Audio(`https://dict.youdao.com/dictvoice?type=${audioType}&audio=${word}`);
     audio.play().catch(err => {
@@ -72,6 +74,20 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
     });
   };
 
+  // 切换例句展开
+  const toggleSentence = (e: React.MouseEvent, word: string) => {
+    e.stopPropagation();
+    setExpandedSentences(prev => {
+      const next = new Set(prev);
+      if (next.has(word)) {
+        next.delete(word);
+      } else {
+        next.add(word);
+      }
+      return next;
+    });
+  };
+
   // 处理长按开始
   const handlePressStart = (word: string) => {
     setPressingWord(word);
@@ -79,6 +95,8 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
       // 长按500ms - 标记为已掌握
       markWordAsMastered(word);
       setPressingWord(null);
+      // 这里可以加一个震动反馈如果设备支持 navigator.vibrate
+      if (navigator.vibrate) navigator.vibrate(50);
     }, 500);
   };
 
@@ -90,6 +108,7 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
     }
 
     // 如果没有达到长按时间,就是点击 - 标记为困难
+    // 注意：这里只有在点击右侧操作按钮时才会触发，卡片主体点击是切换翻译
     if (pressingWord === word) {
       markWordAsDifficult(word);
     }
@@ -109,50 +128,69 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md transition-opacity duration-300"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col ring-1 ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 px-6 py-4 border-b border-orange-100 dark:border-gray-700 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-orange-900 dark:text-orange-100">生词本</h2>
-            <div className="flex gap-4 mt-2 text-sm text-orange-700 dark:text-orange-300">
-              <span>总计: {newWords.length}</span>
-              <span>未学习: {unstudiedCount}</span>
-              <span>已掌握: {masteredCount}</span>
+        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 flex justify-between items-center z-10">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
+              <BookOpen size={18} className="sm:w-5 sm:h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight">生词本</h2>
+              <div className="flex gap-2 sm:gap-3 mt-1">
+                <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 sm:px-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                  总计 {newWords.length}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 sm:px-2 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                  待复习 {unstudiedCount}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 sm:px-2 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                  已掌握 {masteredCount}
+                </span>
+              </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-orange-400 dark:text-orange-300 hover:text-orange-600 dark:hover:text-orange-100 transition-colors"
+            className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all duration-200"
           >
-            <X size={24} />
+            <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-gray-50/50 dark:bg-black/20">
           {wordsToStudy.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-              <p className="text-lg">暂无生词需要学习</p>
-              <p className="text-sm mt-2">开始阅读吧!</p>
+            <div className="flex flex-col items-center justify-center h-full py-16 sm:py-20 text-center">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white dark:bg-gray-800 rounded-full shadow-sm flex items-center justify-center mb-4 sm:mb-6">
+                <BrainCircuit className="text-gray-300 dark:text-gray-600 w-10 h-10 sm:w-12 sm:h-12" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2">暂无生词需要学习</h3>
+              <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xs">
+                太棒了！你已经完成了所有生词的学习，快去阅读新的文章积累更多词汇吧。
+              </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {wordsToStudy.map((wordData) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {wordsToStudy.map((wordData, index) => (
                 <WordCard
                   key={wordData.word}
                   wordData={wordData}
                   isRevealed={revealedWords.has(wordData.word)}
+                  isSentenceExpanded={expandedSentences.has(wordData.word)}
                   isPressing={pressingWord === wordData.word}
                   onToggleTranslation={() => toggleTranslation(wordData.word)}
-                  onPlayPronunciation={(type) => playPronunciation(wordData.word, type)}
+                  onToggleSentence={(e) => toggleSentence(e, wordData.word)}
+                  onPlayPronunciation={playPronunciation}
                   onPressStart={() => handlePressStart(wordData.word)}
                   onPressEnd={() => handlePressEnd(wordData.word)}
+                  index={index}
                 />
               ))}
             </div>
@@ -160,20 +198,33 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
 
           {/* 加载更多提示 */}
           {wordsToStudy.length >= displayCount && wordsToStudy.length < sortedWords.filter(w => !w.masteredAt).length && (
-            <div className="text-center py-4">
+            <div className="text-center py-6 sm:py-8">
               <button
                 onClick={() => setDisplayCount(prev => prev + 20)}
-                className="px-6 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-800/40 transition-colors"
+                className="px-5 py-2 sm:px-6 sm:py-2.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs sm:text-sm font-medium rounded-full border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-600 dark:hover:text-orange-400 transition-all shadow-sm"
               >
-                加载更多
+                加载更多生词
               </button>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 dark:bg-gray-900/50 px-6 py-3 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
-          <p>💡 提示: 点击圆圈标记为困难词,长按(500ms)标记为已掌握</p>
+        <div className="bg-white dark:bg-gray-900 px-4 py-2.5 sm:px-6 sm:py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+            <span className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+              点击卡片显示释义
+            </span>
+            <span className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>
+              点击圆圈标记困难
+            </span>
+            <span className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+              长按圆圈标记掌握
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -184,131 +235,225 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
 interface WordCardProps {
   wordData: NewWord;
   isRevealed: boolean;
+  isSentenceExpanded: boolean;
   isPressing: boolean;
   onToggleTranslation: () => void;
-  onPlayPronunciation: (type: 'uk' | 'us') => void;
+  onToggleSentence: (e: React.MouseEvent) => void;
+  onPlayPronunciation: (e: React.MouseEvent, word: string, type: 'uk' | 'us') => void;
   onPressStart: () => void;
   onPressEnd: () => void;
+  index: number;
 }
 
 const WordCard: React.FC<WordCardProps> = ({
   wordData,
   isRevealed,
+  isSentenceExpanded,
   isPressing,
   onToggleTranslation,
+  onToggleSentence,
   onPlayPronunciation,
   onPressStart,
-  onPressEnd
+  onPressEnd,
+  index
 }) => {
+  // Staggered animation delay style
+  const style = {
+    animationDelay: `${index * 50}ms`
+  };
+
   return (
-    <div className={`
-      bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 border
-      ${wordData.isMarkedDifficult
-        ? 'border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-900/20'
-        : 'border-gray-200 dark:border-gray-700'
-      }
-      hover:shadow-md transition-all
-    `}>
-      <div className="flex items-start gap-3">
-        {/* 左侧: 单词 + 音标 + 发音 */}
-        <div className="flex-shrink-0 min-w-[140px]">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
+    <div 
+      className={`
+        group relative bg-white dark:bg-gray-800 rounded-xl border transition-all duration-300 animate-in fade-in slide-in-from-bottom-2
+        ${isPressing ? 'scale-[0.98] ring-2 ring-green-500/50 border-green-500/50' : 'hover:shadow-lg hover:-translate-y-0.5'}
+        ${wordData.isMarkedDifficult 
+          ? 'border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-900/10' 
+          : 'border-gray-200 dark:border-gray-700'
+        }
+      `}
+      style={style}
+      onClick={onToggleTranslation}
+    >
+      <div className="p-3 sm:p-5 flex gap-3 sm:gap-4">
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-3 mb-1"> {/* flex-wrap to handle overflow on small screens */}
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
               {wordData.word}
             </h3>
-            {wordData.isMarkedDifficult && (
-              <span className="text-[10px] bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded">
-                困难
-              </span>
+            {wordData.phonetic && (
+              <div className="flex items-center gap-1 sm:gap-2"> {/* This div contains phonetic and pronunciation buttons */}
+                <span className="text-xs sm:text-sm font-mono text-gray-500 dark:text-gray-400">
+                  {wordData.phonetic}
+                </span>
+                <button
+                  onClick={(e) => onPlayPronunciation(e, wordData.word, 'uk')}
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                  title="英式发音"
+                >
+                  <span className="text-[8px] font-bold">UK</span>
+                </button>
+                <button
+                  onClick={(e) => onPlayPronunciation(e, wordData.word, 'us')}
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                  title="美式发音"
+                >
+                  <span className="text-[8px] font-bold">US</span>
+                </button>
+              </div>
             )}
           </div>
-          {wordData.phonetic && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">
-              {wordData.phonetic}
-            </p>
+
+          {/* Difficulty Badge */}
+          {wordData.isMarkedDifficult && (
+            <div className="mb-2 sm:mb-3 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+              <AlertCircle size={10} />
+              困难词汇
+            </div>
           )}
-          {/* 发音按钮 */}
-          <div className="flex gap-1.5 mt-1.5">
-            <button
-              onClick={() => onPlayPronunciation('uk')}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800/50 hover:bg-blue-200 dark:hover:bg-blue-700/50 transition-all"
-              title="播放英音"
-            >
-              <Volume2 size={12} className="text-blue-600 dark:text-blue-300" />
-              <span className="text-[10px] font-medium text-blue-600 dark:text-blue-300">UK</span>
-            </button>
-            <button
-              onClick={() => onPlayPronunciation('us')}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-800/50 hover:bg-purple-200 dark:hover:bg-purple-700/50 transition-all"
-              title="播放美音"
-            >
-              <Volume2 size={12} className="text-purple-600 dark:text-purple-300" />
-              <span className="text-[10px] font-medium text-purple-600 dark:text-purple-300">US</span>
-            </button>
+
+          {/* Hidden/Revealed Content */}
+          <div className="relative mt-1 sm:mt-2 min-h-[2.5rem] sm:min-h-[3rem]">
+            {/* Translation */}
+            {/* Translation & Click to reveal hint */}
+            <div className="min-h-[1.5rem] sm:min-h-[1.75rem] flex items-center">
+              {isRevealed ? (
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium animate-in fade-in duration-200">
+                  {wordData.translation || '暂无翻译'}
+                </p>
+              ) : (
+                <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 font-medium animate-in fade-in duration-200">
+                  <EyeOff size={12} className="sm:w-[14px] sm:h-[14px]" />
+                  <span className="text-[10px] sm:text-xs">点击显示释义</span>
+                </div>
+              )}
+            </div>
+
+
+             {/* Sentence Section (Only shown if revealed and has sentence) */}
+                        {wordData.sentence && (              <div className="mt-2">
+                {isSentenceExpanded ? (
+                   <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-start gap-1.5">
+                         <div className="flex-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic leading-relaxed border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+                           {wordData.sentence}
+                         </div>
+                         <button
+                            onClick={onToggleSentence}
+                            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                            title="收起例句"
+                         >
+                           <ChevronUp size={14} className="sm:w-4 sm:h-4"/>
+                         </button>
+                      </div>
+                   </div>
+                ) : (
+                  <button
+                    onClick={onToggleSentence}
+                    className="flex items-center gap-1 text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-medium py-1"
+                  >
+                    <ChevronDown size={12} className="sm:w-[14px] sm:h-[14px]" />
+                    展开例句
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 中间: 翻译 + 例句 */}
-        <div className="flex-1 min-w-0">
-          {/* 翻译 */}
-          <button
-            onClick={onToggleTranslation}
-            className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <div className="flex items-center gap-1.5">
-              {isRevealed ? (
-                <Eye size={14} className="text-gray-400 flex-shrink-0" />
-              ) : (
-                <EyeOff size={14} className="text-gray-400 flex-shrink-0" />
-              )}
-              <p className={`
-                text-xs text-gray-700 dark:text-gray-300
-                ${!isRevealed ? 'filter blur-sm select-none' : ''}
-              `}>
-                {wordData.translation || '暂无翻译'}
-              </p>
-            </div>
-          </button>
+                {/* Right Action Column */}
 
-          {/* 例句 - PC端在翻译下面 */}
-          {wordData.sentence && (
-            <div className="mt-1.5 px-2 hidden md:block">
-              <p className="text-[11px] text-gray-600 dark:text-gray-400 italic leading-relaxed line-clamp-2">
-                {wordData.sentence}
-              </p>
-            </div>
-          )}
-        </div>
+                <div className="flex flex-col items-center justify-center gap-2 border-l border-gray-100 dark:border-gray-700 pl-3 sm:pl-4 py-1">
 
-        {/* 右侧: 操作按钮 */}
-        <div className="flex-shrink-0">
-          <button
-            onMouseDown={onPressStart}
-            onMouseUp={onPressEnd}
-            onMouseLeave={onPressEnd}
-            onTouchStart={onPressStart}
-            onTouchEnd={onPressEnd}
-            className={`
-              w-8 h-8 rounded-full border-2 transition-all
-              ${isPressing
-                ? 'border-green-500 bg-green-100 dark:bg-green-900/40 scale-90'
-                : 'border-orange-400 dark:border-orange-600 hover:border-orange-500 dark:hover:border-orange-500 hover:scale-110'
-              }
-              active:scale-95
-            `}
-            title="点击=困难 | 长按=已掌握"
-          />
-        </div>
+                  {/* Mastery Button */}
+
+                  <div> {/* Removed mt-auto */}
+
+                    <button
+
+                      onMouseDown={(e) => { e.stopPropagation(); onPressStart(); }}
+
+                      onMouseUp={(e) => { e.stopPropagation(); onPressEnd(); }}
+
+                      onMouseLeave={(e) => { e.stopPropagation(); onPressEnd(); }}
+
+                      onTouchStart={(e) => { e.stopPropagation(); onPressStart(); }}
+
+                      onTouchEnd={(e) => { e.stopPropagation(); onPressEnd(); }}
+
+                      className={`
+
+                        relative w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition-all duration-200
+
+                        ${isPressing
+
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20 scale-110'
+
+                          : 'border-gray-200 dark:border-gray-600 text-gray-300 dark:text-gray-600 hover:border-green-400 hover:text-green-400'
+
+                        }
+
+                      `}
+
+                    >
+
+                      <CheckCircle2 size={16} className={`sm:w-5 sm:h-5 transition-all ${isPressing ? 'text-green-500' : 'currentColor'}`} />
+
+                      
+
+                      {/* Progress Ring Animation (CSS only for simplicity) */}
+
+                      {isPressing && (
+
+                        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none overflow-visible">
+
+                          <circle
+
+                            cx="50%"
+
+                            cy="50%"
+
+                            r="46%" 
+
+                            fill="none"
+
+                            stroke="currentColor"
+
+                            strokeWidth="2"
+
+                            className="text-green-500"
+
+                            strokeDasharray="100"
+
+                            strokeDashoffset="0"
+
+                            style={{
+
+                              animation: 'dash 0.5s linear forwards'
+
+                            }}
+
+                          />
+
+                        </svg>
+
+                      )}
+
+                    </button>
+
+                  </div>
+
+                </div>
       </div>
-
-      {/* 例句区域 - 移动端独立显示 */}
-      {wordData.sentence && (
-        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 md:hidden">
-          <p className="text-[11px] text-gray-600 dark:text-gray-400 italic leading-relaxed">
-            {wordData.sentence}
-          </p>
-        </div>
-      )}
+      
+      {/* Inline CSS for the circle animation */}
+      <style>{`
+        @keyframes dash {
+          from { stroke-dashoffset: 100; }
+          to { stroke-dashoffset: 0; }
+        }
+      `}</style>
     </div>
   );
 };
