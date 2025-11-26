@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logo Preview</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f3f4f6;
+            font-family: sans-serif;
+        }
+        .container {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        .box {
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .light {
+            background-color: white;
+        }
+        .dark {
+            background-color: #1f2937;
+            color: white;
+        }
+        img {
+            width: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Logo Preview</h1>
+    <div class="container">
+        <div class="box light">
+            <span>Light Mode</span>
+            <img src="logo.svg" alt="Logo">
+        </div>
+        <div class="box dark">
+            <span>Dark Mode</span>
+            <img src="logo.svg" alt="Logo">
+        </div>
+    </div>
+    <p>File location: <code>public/logo.svg</code></p>
+</body>
+</html>
