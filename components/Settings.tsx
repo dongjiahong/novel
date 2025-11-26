@@ -51,10 +51,10 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
 
   // WebDAV 配置处理函数
   const handleSaveWebDAVConfig = () => {
-    // 自动拼接 URL
     const configToSave = {
       ...webdavConfig,
-      url: `${window.location.origin}/webdav-proxy/`
+      // 如果 URL 为空，提供默认值
+      url: webdavConfig.url || `${window.location.origin}/webdav-proxy/`
     };
     webdavService.saveConfig(configToSave);
     // 触发配置变化事件
@@ -67,10 +67,11 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
     setIsTesting(true);
     setTestResult(null);
 
-    // 先保存配置（自动拼接 URL）
+    // 先保存配置
     const configToSave = {
       ...webdavConfig,
-      url: `${window.location.origin}/webdav-proxy/`
+      // 如果 URL 为空，提供默认值
+      url: webdavConfig.url || `${window.location.origin}/webdav-proxy/`
     };
     webdavService.saveConfig(configToSave);
     // 触发配置变化事件
@@ -350,16 +351,20 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
               </p>
 
               <div className="space-y-4">
-                {/* 服务器 URL - 自动拼接展示 */}
+                {/* 服务器 URL */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     服务器 URL
                   </label>
-                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
-                    {`${window.location.origin}/webdav-proxy/`}
-                  </div>
+                  <input
+                    type="text"
+                    value={webdavConfig.url}
+                    onChange={(e) => setWebdavConfig({ ...webdavConfig, url: e.target.value })}
+                    placeholder={`${window.location.origin}/webdav-proxy/`}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+                  />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    WebDAV 服务地址（自动配置）
+                    WebDAV 服务地址（留空则使用默认代理地址）
                   </p>
                 </div>
 
