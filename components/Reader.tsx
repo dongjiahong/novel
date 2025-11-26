@@ -785,6 +785,7 @@ const Reader: React.FC<ReaderProps> = ({
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto cursor-pointer"
+          style={{ touchAction: 'none' }}
           onClick={handleContentClick}
           {...bind()}
         >
