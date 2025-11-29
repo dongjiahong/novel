@@ -19,6 +19,8 @@ import {
 
 const DEVICE_ID_KEY = 'device_id';
 const SYNC_DIRTY_FLAGS_KEY = 'sync_dirty_flags';
+const BOOKS_META_UPDATED_AT_KEY = 'books_meta_updated_at';
+const CONFIG_UPDATED_AT_KEY = 'config_updated_at';
 
 // 新的文件路径
 const CONFIG_PATH = '/novel-reader/config.json';
@@ -667,6 +669,10 @@ class SyncService {
       localStorage.setItem('theme_mode', config.themeMode);
     }
 
+    if (config.updatedAt) {
+      localStorage.setItem(CONFIG_UPDATED_AT_KEY, config.updatedAt);
+    }
+
     // 触发自定义事件通知配置已更新
     window.dispatchEvent(new CustomEvent('sync-config-updated'));
     console.log('📢 已触发配置更新事件');
@@ -699,6 +705,7 @@ class SyncService {
   saveBooksMetaToLocal(booksMeta: BooksMetaData): void {
     // 注意：这里只保存元数据，实际的书籍内容由 App.tsx 管理
     localStorage.setItem('books_meta', JSON.stringify(booksMeta.books));
+    localStorage.setItem(BOOKS_META_UPDATED_AT_KEY, booksMeta.updatedAt);
   }
 
   // ============ 增量同步逻辑 ============
@@ -735,14 +742,12 @@ class SyncService {
     try {
       switch (type) {
         case 'config': {
-          const config = localStorage.getItem('selected_vocabulary_level');
-          // 配置没有 updatedAt,暂时用当前时间
-          return config ? new Date().toISOString() : new Date(0).toISOString();
+          const timestamp = localStorage.getItem(CONFIG_UPDATED_AT_KEY);
+          return timestamp || new Date(0).toISOString();
         }
         case 'booksMeta': {
-          const meta = localStorage.getItem('books_meta');
-          // books_meta 也没有 updatedAt,暂时用当前时间
-          return meta ? new Date().toISOString() : new Date(0).toISOString();
+          const timestamp = localStorage.getItem(BOOKS_META_UPDATED_AT_KEY);
+          return timestamp || new Date(0).toISOString();
         }
         case 'newWords': {
           const words = localStorage.getItem('new_words_list');
