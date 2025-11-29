@@ -500,7 +500,7 @@ function AppContent() {
 
       {/* 同步状态提示 */}
       {syncStatus === 'syncing' && (
-          <div className="absolute top-4 right-4 z-50 bg-blue-100 text-blue-700 px-2 py-1 rounded shadow border border-blue-200 w-auto">
+          <div className="absolute top-16 right-4 z-50 bg-blue-100 text-blue-700 px-2 py-1 rounded shadow border border-blue-200 w-auto">
               <div className="flex items-center gap-2">
                   <Loader2 className="animate-spin" size={14} />
                   <span className="font-medium text-sm">
@@ -511,21 +511,21 @@ function AppContent() {
           </div>
       )}
       {syncStatus === 'success' && (
-          <div className="absolute top-16 right-4 z-50 bg-green-100 text-green-700 px-3 py-2 rounded shadow border border-green-200 text-sm">
+          <div className="absolute top-16 right-4 z-50 bg-green-100 text-green-700 px-2 py-1 rounded shadow border border-green-200 text-sm">
               同步成功
           </div>
       )}
       {syncStatus === 'error' && syncError && (
-          <div className="absolute top-16 right-4 z-50 bg-red-100 text-red-700 px-3 py-2 rounded shadow border border-red-200 text-sm">
+          <div className="absolute top-16 right-4 z-50 bg-red-100 text-red-700 px-2 py-1 rounded shadow border border-red-200 text-sm">
               同步失败: {syncError}
           </div>
       )}
 
       {/* 下载书籍提示 */}
       {downloadingBook && (
-          <div className="absolute top-16 right-4 z-50 bg-purple-100 text-purple-700 px-4 py-2 rounded shadow border border-purple-200 flex items-center gap-2">
-              <Loader2 className="animate-spin" size={16} />
-              <span>正在下载: {downloadingBook}</span>
+          <div className="absolute top-16 right-4 z-50 bg-purple-100 text-purple-700 px-2 py-1 rounded shadow border border-purple-200 flex items-center gap-2">
+              <Loader2 className="animate-spin" size={14} />
+              <span className="text-sm">正在下载: {downloadingBook}</span>
           </div>
       )}
 
