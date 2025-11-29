@@ -500,25 +500,14 @@ function AppContent() {
 
       {/* 同步状态提示 */}
       {syncStatus === 'syncing' && (
-          <div className="absolute top-16 right-4 z-50 bg-blue-100 text-blue-700 px-3 py-2 rounded shadow border border-blue-200 min-w-[200px]">
-              <div className="flex items-center gap-2 mb-1">
+          <div className="absolute top-4 right-4 z-50 bg-blue-100 text-blue-700 px-2 py-1 rounded shadow border border-blue-200 w-auto">
+              <div className="flex items-center gap-2">
                   <Loader2 className="animate-spin" size={14} />
-                  <span className="font-medium text-sm">正在同步</span>
+                  <span className="font-medium text-sm">
+                      正在同步
+                      {syncProgress ? `: ${syncProgress.message} (${syncProgress.currentStepIndex}/${syncProgress.totalSteps})` : ''}
+                  </span>
               </div>
-              {syncProgress && (
-                  <div className="space-y-1 text-xs">
-                      <div className="flex justify-between items-center">
-                          <span>{syncProgress.message}</span>
-                          <span className="text-xs opacity-75">{syncProgress.currentStepIndex}/{syncProgress.totalSteps}</span>
-                      </div>
-                      <div className="w-full bg-blue-200 rounded-full h-1">
-                          <div
-                              className="bg-blue-600 h-1 rounded-full transition-all duration-300"
-                              style={{ width: `${(syncProgress.currentStepIndex / syncProgress.totalSteps) * 100}%` }}
-                          />
-                      </div>
-                  </div>
-              )}
           </div>
       )}
       {syncStatus === 'success' && (
