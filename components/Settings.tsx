@@ -136,20 +136,18 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
-                }`}
+                className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${activeTab === tab.id
+                  ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                  }`}
               >
                 <tab.icon size={14} className="sm:w-4 sm:h-4" />
                 {tab.label}
                 {tab.count !== undefined && tab.count > 0 && (
-                  <span className={`ml-1 text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full ${
-                    activeTab === tab.id 
-                      ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' 
-                      : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                  }`}>
+                  <span className={`ml-1 text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.id
+                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'
+                    : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
                     {tab.count}
                   </span>
                 )}
@@ -179,11 +177,10 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                       <button
                         key={level.id}
                         onClick={() => setVocabularyLevel(level.id)}
-                        className={`group relative p-3 sm:p-5 rounded-xl border-2 text-left transition-all duration-200 ${
-                          currentVocabularyLevel?.id === level.id
-                            ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 ring-2 ring-indigo-500/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                        }`}
+                        className={`group relative p-3 sm:p-5 rounded-xl border-2 text-left transition-all duration-200 ${currentVocabularyLevel?.id === level.id
+                          ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 ring-2 ring-indigo-500/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                          }`}
                       >
                         <div className="flex justify-between items-start">
                           <div>
@@ -219,11 +216,10 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                     <button
                       key={size}
                       onClick={() => setDictionarySize(size as 'small' | 'large')}
-                      className={`p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 flex items-center justify-between ${
-                        dictionarySize === size
-                          ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700'
-                      }`}
+                      className={`p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 flex items-center justify-between ${dictionarySize === size
+                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700'
+                        }`}
                     >
                       <div className="text-left">
                         <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-white capitalize">{size} Dictionary</h4>
@@ -293,7 +289,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                           导出
                         </button>
                       </div>
-                      
+
                       <div className="p-3 sm:p-4">
                         <div className="flex flex-wrap gap-1.5 sm:gap-2">
                           {words.slice(0, 15).map((word, idx) => (
@@ -428,11 +424,10 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                 {(testResult || syncStatus) && (
                   <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                     {testResult && (
-                      <div className={`p-2 sm:p-3 rounded-lg mb-3 flex items-center gap-2 text-xs sm:text-sm font-medium ${
-                        testResult === 'success'
-                          ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                          : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                      }`}>
+                      <div className={`p-2 sm:p-3 rounded-lg mb-3 flex items-center gap-2 text-xs sm:text-sm font-medium ${testResult === 'success'
+                        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                        }`}>
                         {testResult === 'success' ? <CheckCircle size={14} className="sm:w-4 sm:h-4" /> : <X size={14} className="sm:w-4 sm:h-4" />}
                         {testResult === 'success' ? '连接成功，配置有效' : '连接失败，请检查配置'}
                       </div>
@@ -441,21 +436,20 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                     {syncStatus && (
                       <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-between">
                         <div className="flex items-center gap-2 sm:gap-3">
-                          <div className={`p-1.5 rounded-full ${
-                            syncStatus === 'syncing' ? 'bg-blue-100 text-blue-600' :
+                          <div className={`p-1.5 rounded-full ${syncStatus === 'syncing' ? 'bg-blue-100 text-blue-600' :
                             syncStatus === 'success' ? 'bg-green-100 text-green-600' :
-                            syncStatus === 'error' ? 'bg-red-100 text-red-600' :
-                            'bg-gray-100 text-gray-500'
-                          }`}>
-                             {syncStatus === 'syncing' ? <Loader2 size={14} className="animate-spin sm:w-4 sm:h-4" /> :
+                              syncStatus === 'error' ? 'bg-red-100 text-red-600' :
+                                'bg-gray-100 text-gray-500'
+                            }`}>
+                            {syncStatus === 'syncing' ? <Loader2 size={14} className="animate-spin sm:w-4 sm:h-4" /> :
                               syncStatus === 'success' ? <Check size={14} className="sm:w-4 sm:h-4" /> :
-                              syncStatus === 'error' ? <X size={14} className="sm:w-4 sm:h-4" /> : <Cloud size={14} className="sm:w-4 sm:h-4" />}
+                                syncStatus === 'error' ? <X size={14} className="sm:w-4 sm:h-4" /> : <Cloud size={14} className="sm:w-4 sm:h-4" />}
                           </div>
                           <div className="flex flex-col">
                             <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                               {syncStatus === 'syncing' ? '正在同步...' :
-                               syncStatus === 'success' ? '同步完成' :
-                               syncStatus === 'error' ? '同步出错' : '准备就绪'}
+                                syncStatus === 'success' ? '同步完成' :
+                                  syncStatus === 'error' ? '同步出错' : '准备就绪'}
                             </span>
                             {syncProgress?.message && (
                               <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">{syncProgress.message}</span>
@@ -489,17 +483,15 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                   <button
                     key={theme.mode}
                     onClick={() => setThemeMode(theme.mode as any)}
-                    className={`flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl border-2 transition-all duration-200 ${
-                      themeMode === theme.mode
-                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 shadow-sm'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-                    }`}
+                    className={`flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl border-2 transition-all duration-200 ${themeMode === theme.mode
+                      ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 shadow-sm'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
                   >
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full mb-2 sm:mb-3 flex items-center justify-center ${
-                      themeMode === theme.mode 
-                        ? 'bg-indigo-500 text-white' 
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-                    }`}>
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full mb-2 sm:mb-3 flex items-center justify-center ${themeMode === theme.mode
+                      ? 'bg-indigo-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                      }`}>
                       <theme.icon size={20} className="sm:w-6 sm:h-6" />
                     </div>
                     <h4 className={`font-bold text-sm sm:text-base ${themeMode === theme.mode ? 'text-indigo-900 dark:text-indigo-100' : 'text-gray-900 dark:text-white'}`}>

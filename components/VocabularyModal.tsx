@@ -263,12 +263,12 @@ const WordCard: React.FC<WordCardProps> = ({
   };
 
   return (
-    <div 
+    <div
       className={`
         group relative bg-white dark:bg-gray-800 rounded-xl border transition-all duration-300 animate-in fade-in slide-in-from-bottom-2
         ${isPressing ? 'scale-[0.98] ring-2 ring-green-500/50 border-green-500/50' : 'hover:shadow-lg hover:-translate-y-0.5'}
-        ${wordData.isMarkedDifficult 
-          ? 'border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-900/10' 
+        ${wordData.isMarkedDifficult
+          ? 'border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-900/10'
           : 'border-gray-200 dark:border-gray-700'
         }
       `}
@@ -331,122 +331,122 @@ const WordCard: React.FC<WordCardProps> = ({
             </div>
 
 
-             {/* Sentence Section (Only shown if revealed and has sentence) */}
-                        {wordData.sentence && (              <div className="mt-2">
-                {isSentenceExpanded ? (
-                   <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                      <div className="flex items-start gap-1.5">
-                         <div className="flex-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic leading-relaxed border-l-2 border-gray-200 dark:border-gray-700 pl-2">
-                           {wordData.sentence}
-                         </div>
-                         <button
-                            onClick={onToggleSentence}
-                            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                            title="收起例句"
-                         >
-                           <ChevronUp size={14} className="sm:w-4 sm:h-4"/>
-                         </button>
-                      </div>
-                   </div>
-                ) : (
-                  <button
-                    onClick={onToggleSentence}
-                    className="flex items-center gap-1 text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-medium py-1"
-                  >
-                    <ChevronDown size={12} className="sm:w-[14px] sm:h-[14px]" />
-                    展开例句
-                  </button>
-                )}
-              </div>
+            {/* Sentence Section (Only shown if revealed and has sentence) */}
+            {wordData.sentence && (<div className="mt-2">
+              {isSentenceExpanded ? (
+                <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-start gap-1.5">
+                    <div className="flex-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic leading-relaxed border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+                      {wordData.sentence}
+                    </div>
+                    <button
+                      onClick={onToggleSentence}
+                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                      title="收起例句"
+                    >
+                      <ChevronUp size={14} className="sm:w-4 sm:h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={onToggleSentence}
+                  className="flex items-center gap-1 text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-medium py-1"
+                >
+                  <ChevronDown size={12} className="sm:w-[14px] sm:h-[14px]" />
+                  展开例句
+                </button>
+              )}
+            </div>
             )}
           </div>
         </div>
 
-                {/* Right Action Column */}
+        {/* Right Action Column */}
 
-                <div className="flex flex-col items-center justify-center gap-2 border-l border-gray-100 dark:border-gray-700 pl-3 sm:pl-4 py-1">
+        <div className="flex flex-col items-center justify-center gap-2 border-l border-gray-100 dark:border-gray-700 pl-3 sm:pl-4 py-1">
 
-                  {/* Mastery Button */}
+          {/* Mastery Button */}
 
-                  <div> {/* Removed mt-auto */}
+          <div> {/* Removed mt-auto */}
 
-                    <button
+            <button
 
-                      onMouseDown={(e) => { e.stopPropagation(); onPressStart(); }}
+              onMouseDown={(e) => { e.stopPropagation(); onPressStart(); }}
 
-                      onMouseUp={(e) => { e.stopPropagation(); onPressEnd(); }}
+              onMouseUp={(e) => { e.stopPropagation(); onPressEnd(); }}
 
-                      onMouseLeave={(e) => { e.stopPropagation(); onPressEnd(); }}
+              onMouseLeave={(e) => { e.stopPropagation(); onPressEnd(); }}
 
-                      onTouchStart={(e) => { e.stopPropagation(); onPressStart(); }}
+              onTouchStart={(e) => { e.stopPropagation(); onPressStart(); }}
 
-                      onTouchEnd={(e) => { e.stopPropagation(); onPressEnd(); }}
+              onTouchEnd={(e) => { e.stopPropagation(); onPressEnd(); }}
 
-                      className={`
+              className={`
 
                         relative w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition-all duration-200
 
                         ${isPressing
 
-                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20 scale-110'
+                  ? 'border-green-500 bg-green-50 dark:bg-green-900/20 scale-110'
 
-                          : 'border-gray-200 dark:border-gray-600 text-gray-300 dark:text-gray-600 hover:border-green-400 hover:text-green-400'
+                  : 'border-gray-200 dark:border-gray-600 text-gray-300 dark:text-gray-600 hover:border-green-400 hover:text-green-400'
 
-                        }
+                }
 
                       `}
 
-                    >
+            >
 
-                      <CheckCircle2 size={16} className={`sm:w-5 sm:h-5 transition-all ${isPressing ? 'text-green-500' : 'currentColor'}`} />
+              <CheckCircle2 size={16} className={`sm:w-5 sm:h-5 transition-all ${isPressing ? 'text-green-500' : 'currentColor'}`} />
 
-                      
 
-                      {/* Progress Ring Animation (CSS only for simplicity) */}
 
-                      {isPressing && (
+              {/* Progress Ring Animation (CSS only for simplicity) */}
 
-                        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none overflow-visible">
+              {isPressing && (
 
-                          <circle
+                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none overflow-visible">
 
-                            cx="50%"
+                  <circle
 
-                            cy="50%"
+                    cx="50%"
 
-                            r="46%" 
+                    cy="50%"
 
-                            fill="none"
+                    r="46%"
 
-                            stroke="currentColor"
+                    fill="none"
 
-                            strokeWidth="2"
+                    stroke="currentColor"
 
-                            className="text-green-500"
+                    strokeWidth="2"
 
-                            strokeDasharray="100"
+                    className="text-green-500"
 
-                            strokeDashoffset="0"
+                    strokeDasharray="100"
 
-                            style={{
+                    strokeDashoffset="0"
 
-                              animation: 'dash 0.5s linear forwards'
+                    style={{
 
-                            }}
+                      animation: 'dash 0.5s linear forwards'
 
-                          />
+                    }}
 
-                        </svg>
+                  />
 
-                      )}
+                </svg>
 
-                    </button>
+              )}
 
-                  </div>
+            </button>
 
-                </div>
+          </div>
+
+        </div>
       </div>
-      
+
       {/* Inline CSS for the circle animation */}
       <style>{`
         @keyframes dash {

@@ -495,16 +495,16 @@ class SyncService {
           reviewCount: Math.max(existing.reviewCount, word.reviewCount),
           // 取最新的 lastReviewedAt
           lastReviewedAt: !existing.lastReviewedAt ? word.lastReviewedAt :
-                          !word.lastReviewedAt ? existing.lastReviewedAt :
-                          new Date(existing.lastReviewedAt) > new Date(word.lastReviewedAt)
-                            ? existing.lastReviewedAt
-                            : word.lastReviewedAt,
+            !word.lastReviewedAt ? existing.lastReviewedAt :
+              new Date(existing.lastReviewedAt) > new Date(word.lastReviewedAt)
+                ? existing.lastReviewedAt
+                : word.lastReviewedAt,
           // 取最新的 masteredAt
           masteredAt: !existing.masteredAt ? word.masteredAt :
-                      !word.masteredAt ? existing.masteredAt :
-                      new Date(existing.masteredAt) > new Date(word.masteredAt)
-                        ? existing.masteredAt
-                        : word.masteredAt,
+            !word.masteredAt ? existing.masteredAt :
+              new Date(existing.masteredAt) > new Date(word.masteredAt)
+                ? existing.masteredAt
+                : word.masteredAt,
           // 只要有一方标记为困难,就保留困难标记
           isMarkedDifficult: existing.isMarkedDifficult || word.isMarkedDifficult,
         };
