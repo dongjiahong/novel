@@ -21,6 +21,7 @@ function AppContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [downloadingBook, setDownloadingBook] = useState<string | null>(null);
+  const [lastProgressAppliedAt, setLastProgressAppliedAt] = useState<number>(0);
 
   // 标记是否已执行过启动同步，防止重复触发
   const hasInitialSyncRef = useRef(false);
@@ -168,8 +169,8 @@ function AppContent() {
   const currentBookChapters = activeBook?.chapters || [];
 
   const currentChapter = currentBookChapters.find(c => c.id === activeChapterId)
-                         || currentBookChapters[0]
-                         || { id: 'empty', title: '无内容', content: '' };
+    || currentBookChapters[0]
+    || { id: 'empty', title: '无内容', content: '' };
 
   // 获取当前章节的索引和初始段落索引
   const currentChapterIndex = currentBookChapters.findIndex(c => c.id === activeChapterId);
@@ -269,6 +270,33 @@ function AppContent() {
     }
   }, [isInitialLoad, manualSync]);
 
+  // 当阅读进度有更晚的时间戳时，自动聚焦到对应的书籍与章节，保证多设备同步后定位正确
+  useEffect(() => {
+    if (books.length === 0 || progressList.length === 0) return;
+
+    const validProgress = progressList.filter(p => books.some(b => b.id === p.bookId));
+    if (validProgress.length === 0) return;
+
+    const latest = validProgress.reduce((acc, curr) => {
+      const accTime = new Date(acc.updatedAt).getTime();
+      const currTime = new Date(curr.updatedAt).getTime();
+      return currTime > accTime ? curr : acc;
+    });
+
+    const latestTime = new Date(latest.updatedAt).getTime();
+    if (!Number.isFinite(latestTime) || latestTime <= lastProgressAppliedAt) return;
+
+    const targetBook = books.find(b => b.id === latest.bookId);
+    if (!targetBook || targetBook.chapters.length === 0) return;
+
+    const targetChapter = targetBook.chapters[latest.chapterIndex] ?? targetBook.chapters[0];
+    if (!targetChapter) return;
+
+    setActiveBookId(targetBook.id);
+    setActiveChapterId(targetChapter.id);
+    setLastProgressAppliedAt(latestTime);
+  }, [books, progressList, lastProgressAppliedAt]);
+
   // 从阅读进度恢复章节位置（当 progressList 加载完成后）
   useEffect(() => {
     if (activeBookId && books.length > 0 && !activeChapterId) {
@@ -292,186 +320,186 @@ function AppContent() {
 
   // 当切换书籍时，确保章节ID有效
   useEffect(() => {
-      if (activeBook && currentBookChapters.length > 0 && activeChapterId) {
-          const exists = currentBookChapters.find(c => c.id === activeChapterId);
-          // 只有在章节ID确实无效时才重置，避免干扰阅读进度恢复
-          if (!exists && !isInitialLoad) {
-              console.log('当前章节ID无效，重置为第一章');
-              setActiveChapterId(currentBookChapters[0].id);
-          }
+    if (activeBook && currentBookChapters.length > 0 && activeChapterId) {
+      const exists = currentBookChapters.find(c => c.id === activeChapterId);
+      // 只有在章节ID确实无效时才重置，避免干扰阅读进度恢复
+      if (!exists && !isInitialLoad) {
+        console.log('当前章节ID无效，重置为第一章');
+        setActiveChapterId(currentBookChapters[0].id);
       }
+    }
   }, [activeBookId, activeBook, currentBookChapters, isInitialLoad]);
 
   const handleSelectBook = (id: string) => {
-      setActiveBookId(id);
-      const book = books.find(b => b.id === id);
-      if (book && book.chapters.length > 0) {
-          // 尝试从阅读进度恢复位置
-          const progress = getProgress(id);
-          if (progress && book.chapters[progress.chapterIndex]) {
-              setActiveChapterId(book.chapters[progress.chapterIndex].id);
-          } else {
-              setActiveChapterId(book.chapters[0].id);
-          }
+    setActiveBookId(id);
+    const book = books.find(b => b.id === id);
+    if (book && book.chapters.length > 0) {
+      // 尝试从阅读进度恢复位置
+      const progress = getProgress(id);
+      if (progress && book.chapters[progress.chapterIndex]) {
+        setActiveChapterId(book.chapters[progress.chapterIndex].id);
       } else {
-          setActiveChapterId('');
+        setActiveChapterId(book.chapters[0].id);
       }
+    } else {
+      setActiveChapterId('');
+    }
   };
 
   const handleSelectChapter = (chapterId: string) => {
-      setActiveChapterId(chapterId);
+    setActiveChapterId(chapterId);
 
-      // 保存阅读进度
-      if (activeBook) {
-          const chapterIndex = activeBook.chapters.findIndex(c => c.id === chapterId);
-          if (chapterIndex >= 0) {
-              const chapter = activeBook.chapters[chapterIndex];
-              saveProgress(
-                  activeBook.id,
-                  activeBook.title,
-                  chapterIndex,
-                  chapter.title,
-                  0 // 切换章节时从第一个段落开始
-              );
-          }
+    // 保存阅读进度
+    if (activeBook) {
+      const chapterIndex = activeBook.chapters.findIndex(c => c.id === chapterId);
+      if (chapterIndex >= 0) {
+        const chapter = activeBook.chapters[chapterIndex];
+        saveProgress(
+          activeBook.id,
+          activeBook.title,
+          chapterIndex,
+          chapter.title,
+          0 // 切换章节时从第一个段落开始
+        );
       }
+    }
   };
 
   // 处理阅读进度保存（翻页时调用）
   const handleSaveProgress = useCallback((chapterIndex: number, paragraphIndex: number) => {
-      if (activeBook && activeBook.chapters[chapterIndex]) {
-          const chapter = activeBook.chapters[chapterIndex];
-          saveProgress(
-              activeBook.id,
-              activeBook.title,
-              chapterIndex,
-              chapter.title,
-              paragraphIndex
-          );
-      }
+    if (activeBook && activeBook.chapters[chapterIndex]) {
+      const chapter = activeBook.chapters[chapterIndex];
+      saveProgress(
+        activeBook.id,
+        activeBook.title,
+        chapterIndex,
+        chapter.title,
+        paragraphIndex
+      );
+    }
   }, [activeBook, saveProgress]);
 
   const handleDeleteBook = async (id: string) => {
-      const newBooks = books.filter(b => b.id !== id);
-      setBooks(newBooks);
+    const newBooks = books.filter(b => b.id !== id);
+    setBooks(newBooks);
 
-      // 删除书籍文件内容
-      setBookFiles(prev => {
-          const newFiles = new Map(prev);
-          newFiles.delete(id);
-          return newFiles;
-      });
+    // 删除书籍文件内容
+    setBookFiles(prev => {
+      const newFiles = new Map(prev);
+      newFiles.delete(id);
+      return newFiles;
+    });
 
-      // 从 IndexedDB 删除
-      try {
-        await storageService.deleteBook(id);
-      } catch (error) {
-        console.error('从 IndexedDB 删除书籍失败:', error);
+    // 从 IndexedDB 删除
+    try {
+      await storageService.deleteBook(id);
+    } catch (error) {
+      console.error('从 IndexedDB 删除书籍失败:', error);
+    }
+
+    // 删除阅读进度
+    try {
+      removeProgress(id);
+      console.log(`已删除书籍 ${id} 的阅读进度`);
+    } catch (error) {
+      console.error('删除阅读进度失败:', error);
+    }
+
+    // 清理 localStorage 中的 books_meta
+    try {
+      const booksMetaStr = localStorage.getItem('books_meta');
+      if (booksMetaStr) {
+        const booksMeta = JSON.parse(booksMetaStr);
+        const updatedMeta = booksMeta.filter((book: any) => book.id !== id);
+        localStorage.setItem('books_meta', JSON.stringify(updatedMeta));
+        console.log(`已从 books_meta 中删除书籍 ${id}`);
+
+        // 标记书籍元数据为脏数据
+        syncDirtyFlags.set('booksMeta');
       }
+    } catch (error) {
+      console.error('清理 books_meta 失败:', error);
+    }
 
-      // 删除阅读进度
-      try {
-        removeProgress(id);
-        console.log(`已删除书籍 ${id} 的阅读进度`);
-      } catch (error) {
-        console.error('删除阅读进度失败:', error);
-      }
+    if (activeBookId === id) {
+      if (newBooks.length > 0) {
+        const nextBook = newBooks[0];
+        setActiveBookId(nextBook.id);
 
-      // 清理 localStorage 中的 books_meta
-      try {
-        const booksMetaStr = localStorage.getItem('books_meta');
-        if (booksMetaStr) {
-          const booksMeta = JSON.parse(booksMetaStr);
-          const updatedMeta = booksMeta.filter((book: any) => book.id !== id);
-          localStorage.setItem('books_meta', JSON.stringify(updatedMeta));
-          console.log(`已从 books_meta 中删除书籍 ${id}`);
-
-          // 标记书籍元数据为脏数据
-          syncDirtyFlags.set('booksMeta');
+        // 恢复阅读进度
+        const progress = getProgress(nextBook.id);
+        if (progress && nextBook.chapters[progress.chapterIndex]) {
+          setActiveChapterId(nextBook.chapters[progress.chapterIndex].id);
+        } else {
+          setActiveChapterId(nextBook.chapters[0]?.id || '');
         }
-      } catch (error) {
-        console.error('清理 books_meta 失败:', error);
+      } else {
+        setActiveBookId('');
+        setActiveChapterId('');
       }
-
-      if (activeBookId === id) {
-          if (newBooks.length > 0) {
-              const nextBook = newBooks[0];
-              setActiveBookId(nextBook.id);
-
-              // 恢复阅读进度
-              const progress = getProgress(nextBook.id);
-              if (progress && nextBook.chapters[progress.chapterIndex]) {
-                  setActiveChapterId(nextBook.chapters[progress.chapterIndex].id);
-              } else {
-                  setActiveChapterId(nextBook.chapters[0]?.id || '');
-              }
-          } else {
-              setActiveBookId('');
-              setActiveChapterId('');
-          }
-      }
+    }
   };
 
   const handleAddBook = async (file: File) => {
     setIsParsing(true);
     setErrorMsg(null);
     try {
-        console.log(`开始添加书籍: ${file.name}, 类型: ${file.type}, 大小: ${file.size} 字节`);
+      console.log(`开始添加书籍: ${file.name}, 类型: ${file.type}, 大小: ${file.size} 字节`);
 
-        const newBook = await parseFile(file);
-        console.log(`书籍解析成功: ${newBook.title}, ID: ${newBook.id}, 章节数: ${newBook.chapters.length}`);
+      const newBook = await parseFile(file);
+      console.log(`书籍解析成功: ${newBook.title}, ID: ${newBook.id}, 章节数: ${newBook.chapters.length}`);
 
-        // 读取文件内容用于上传
-        let fileContent: string;
-        const isEpub = file.name.endsWith('.epub') || file.type === 'application/epub+zip';
+      // 读取文件内容用于上传
+      let fileContent: string;
+      const isEpub = file.name.endsWith('.epub') || file.type === 'application/epub+zip';
 
-        if (isEpub) {
-            // EPUB 文件：读取为 ArrayBuffer，然后转换为 Base64
-            console.log('读取 EPUB 文件为二进制...');
-            const arrayBuffer = await file.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            fileContent = btoa(binary);
-            console.log(`EPUB 文件已转换为 Base64，原始大小: ${arrayBuffer.byteLength} 字节, Base64 大小: ${fileContent.length} 字符`);
-        } else {
-            // TXT 文件：直接读取为文本
-            console.log('读取 TXT 文件为文本...');
-            fileContent = await file.text();
-            console.log(`TXT 文件读取完成，大小: ${fileContent.length} 字符`);
+      if (isEpub) {
+        // EPUB 文件：读取为 ArrayBuffer，然后转换为 Base64
+        console.log('读取 EPUB 文件为二进制...');
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
         }
+        fileContent = btoa(binary);
+        console.log(`EPUB 文件已转换为 Base64，原始大小: ${arrayBuffer.byteLength} 字节, Base64 大小: ${fileContent.length} 字符`);
+      } else {
+        // TXT 文件：直接读取为文本
+        console.log('读取 TXT 文件为文本...');
+        fileContent = await file.text();
+        console.log(`TXT 文件读取完成，大小: ${fileContent.length} 字符`);
+      }
 
-        setBookFiles(prev => {
-            const newFiles = new Map(prev);
-            newFiles.set(newBook.id, fileContent);
-            return newFiles;
-        });
+      setBookFiles(prev => {
+        const newFiles = new Map(prev);
+        newFiles.set(newBook.id, fileContent);
+        return newFiles;
+      });
 
-        setBooks(prev => [...prev, newBook]);
-        setActiveBookId(newBook.id);
-        if (newBook.chapters.length > 0) {
-            setActiveChapterId(newBook.chapters[0].id);
+      setBooks(prev => [...prev, newBook]);
+      setActiveBookId(newBook.id);
+      if (newBook.chapters.length > 0) {
+        setActiveChapterId(newBook.chapters[0].id);
 
-            // 保存初始阅读进度
-            saveProgress(
-                newBook.id,
-                newBook.title,
-                0,
-                newBook.chapters[0].title,
-                0
-            );
-        }
+        // 保存初始阅读进度
+        saveProgress(
+          newBook.id,
+          newBook.title,
+          0,
+          newBook.chapters[0].title,
+          0
+        );
+      }
 
-        // 标记书籍元数据为脏数据
-        syncDirtyFlags.set('booksMeta');
+      // 标记书籍元数据为脏数据
+      syncDirtyFlags.set('booksMeta');
     } catch (err: any) {
-        console.error("Parsing error:", err);
-        setErrorMsg(err.message || "解析文件失败");
-        setTimeout(() => setErrorMsg(null), 3000);
+      console.error("Parsing error:", err);
+      setErrorMsg(err.message || "解析文件失败");
+      setTimeout(() => setErrorMsg(null), 3000);
     } finally {
-        setIsParsing(false);
+      setIsParsing(false);
     }
   };
 
@@ -483,95 +511,95 @@ function AppContent() {
 
       {/* Loading Overlay */}
       {isParsing && (
-          <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center">
-              <div className="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
-                  <Loader2 className="animate-spin text-blue-600 mb-3" size={32} />
-                  <span className="text-gray-700 font-medium">正在解析图书内容...</span>
-              </div>
+        <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
+            <Loader2 className="animate-spin text-blue-600 mb-3" size={32} />
+            <span className="text-gray-700 font-medium">正在解析图书内容...</span>
           </div>
+        </div>
       )}
 
       {/* Error Toast */}
       {errorMsg && (
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-100 text-red-700 px-4 py-2 rounded shadow border border-red-200">
-              {errorMsg}
-          </div>
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-100 text-red-700 px-4 py-2 rounded shadow border border-red-200">
+          {errorMsg}
+        </div>
       )}
 
       {/* 同步状态提示 */}
       {syncStatus === 'syncing' && (
-          <div className="absolute top-16 right-4 z-50 bg-blue-100 text-blue-700 px-2 py-1 rounded shadow border border-blue-200 w-auto">
-              <div className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" size={14} />
-                  <span className="font-medium text-sm">
-                      正在同步
-                      {syncProgress ? `: ${syncProgress.message} (${syncProgress.currentStepIndex}/${syncProgress.totalSteps})` : ''}
-                  </span>
-              </div>
+        <div className="absolute top-16 right-4 z-50 bg-blue-100 text-blue-700 px-2 py-1 rounded shadow border border-blue-200 w-auto">
+          <div className="flex items-center gap-2">
+            <Loader2 className="animate-spin" size={14} />
+            <span className="font-medium text-sm">
+              正在同步
+              {syncProgress ? `: ${syncProgress.message} (${syncProgress.currentStepIndex}/${syncProgress.totalSteps})` : ''}
+            </span>
           </div>
+        </div>
       )}
       {syncStatus === 'success' && (
-          <div className="absolute top-16 right-4 z-50 bg-green-100 text-green-700 px-2 py-1 rounded shadow border border-green-200 text-sm">
-              同步成功
-          </div>
+        <div className="absolute top-16 right-4 z-50 bg-green-100 text-green-700 px-2 py-1 rounded shadow border border-green-200 text-sm">
+          同步成功
+        </div>
       )}
       {syncStatus === 'error' && syncError && (
-          <div className="absolute top-16 right-4 z-50 bg-red-100 text-red-700 px-2 py-1 rounded shadow border border-red-200 text-sm">
-              同步失败: {syncError}
-          </div>
+        <div className="absolute top-16 right-4 z-50 bg-red-100 text-red-700 px-2 py-1 rounded shadow border border-red-200 text-sm">
+          同步失败: {syncError}
+        </div>
       )}
 
       {/* 下载书籍提示 */}
       {downloadingBook && (
-          <div className="absolute top-16 right-4 z-50 bg-purple-100 text-purple-700 px-2 py-1 rounded shadow border border-purple-200 flex items-center gap-2">
-              <Loader2 className="animate-spin" size={14} />
-              <span className="text-sm">正在下载: {downloadingBook}</span>
-          </div>
+        <div className="absolute top-16 right-4 z-50 bg-purple-100 text-purple-700 px-2 py-1 rounded shadow border border-purple-200 flex items-center gap-2">
+          <Loader2 className="animate-spin" size={14} />
+          <span className="text-sm">正在下载: {downloadingBook}</span>
+        </div>
       )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-         {activeBookId && activeBook ? (
-             <Reader
-                 chapter={currentChapter}
-                 bookId={activeBook.id}
-                 bookTitle={activeBook.title}
-                 chapterIndex={currentChapterIndex >= 0 ? currentChapterIndex : 0}
-                 onSaveProgress={handleSaveProgress}
-                 initialParagraphIndex={initialParagraphIndex}
-                 books={books}
-                 chapters={currentBookChapters}
-                 activeChapterId={activeChapterId}
-                 onSelectBook={handleSelectBook}
-                 onSelectChapter={handleSelectChapter}
-                 onAddBook={handleAddBook}
-                 onDeleteBook={handleDeleteBook}
-                 syncStatus={syncStatus}
-                 syncProgress={syncProgress}
-                 onManualSync={manualSync}
-                 isWebDAVConfigured={isConfigured}
-             />
-         ) : (
-             <Reader
-                 chapter={currentChapter}
-                 bookId={''}
-                 bookTitle={''}
-                 chapterIndex={0}
-                 onSaveProgress={handleSaveProgress}
-                 initialParagraphIndex={0}
-                 books={books}
-                 chapters={[]}
-                 activeChapterId={''}
-                 onSelectBook={handleSelectBook}
-                 onSelectChapter={handleSelectChapter}
-                 onAddBook={handleAddBook}
-                 onDeleteBook={handleDeleteBook}
-                 syncStatus={syncStatus}
-                 syncProgress={syncProgress}
-                 onManualSync={manualSync}
-                 isWebDAVConfigured={isConfigured}
-             />
-         )}
+        {activeBookId && activeBook ? (
+          <Reader
+            chapter={currentChapter}
+            bookId={activeBook.id}
+            bookTitle={activeBook.title}
+            chapterIndex={currentChapterIndex >= 0 ? currentChapterIndex : 0}
+            onSaveProgress={handleSaveProgress}
+            initialParagraphIndex={initialParagraphIndex}
+            books={books}
+            chapters={currentBookChapters}
+            activeChapterId={activeChapterId}
+            onSelectBook={handleSelectBook}
+            onSelectChapter={handleSelectChapter}
+            onAddBook={handleAddBook}
+            onDeleteBook={handleDeleteBook}
+            syncStatus={syncStatus}
+            syncProgress={syncProgress}
+            onManualSync={manualSync}
+            isWebDAVConfigured={isConfigured}
+          />
+        ) : (
+          <Reader
+            chapter={currentChapter}
+            bookId={''}
+            bookTitle={''}
+            chapterIndex={0}
+            onSaveProgress={handleSaveProgress}
+            initialParagraphIndex={0}
+            books={books}
+            chapters={[]}
+            activeChapterId={''}
+            onSelectBook={handleSelectBook}
+            onSelectChapter={handleSelectChapter}
+            onAddBook={handleAddBook}
+            onDeleteBook={handleDeleteBook}
+            syncStatus={syncStatus}
+            syncProgress={syncProgress}
+            onManualSync={manualSync}
+            isWebDAVConfigured={isConfigured}
+          />
+        )}
       </div>
     </div>
   );

@@ -169,6 +169,7 @@ const Reader: React.FC<ReaderProps> = ({
 
   // 创建一个 Set 来快速查找哪些单词应该被标注
   const [shouldAnnotateSet, setShouldAnnotateSet] = useState<Set<number>>(new Set());
+  const appliedInitialPageRef = useRef<{ chapterId: string; paragraphIndex: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -264,22 +265,33 @@ const Reader: React.FC<ReaderProps> = ({
 
   // 根据段落索引计算并设置初始页码
   useEffect(() => {
-    if (pageRanges.length === 0 || pageRanges[0].start === 0 && pageRanges[0].end === 0) {
-      return; // 等待分页计算完成
-    }
+    const hasValidRanges = pageRanges.length > 0 && !(pageRanges.length === 1 && pageRanges[0].start === 0 && pageRanges[0].end === 0);
+    if (!hasValidRanges) return;
 
-    // 找到包含 initialParagraphIndex 的页面
+    const alreadyApplied = appliedInitialPageRef.current
+      && appliedInitialPageRef.current.chapterId === chapter.id
+      && appliedInitialPageRef.current.paragraphIndex === initialParagraphIndex;
+    if (alreadyApplied) return;
+
+    // 将段落索引夹在可用范围内，避免越界导致回到第一页
+    const lastRange = pageRanges[pageRanges.length - 1];
+    const maxParagraphIndex = Math.max(0, lastRange.end - 1);
+    const clampedParagraphIndex = Math.min(Math.max(initialParagraphIndex, 0), maxParagraphIndex);
+
     const pageIndex = pageRanges.findIndex(
-      range => initialParagraphIndex >= range.start && initialParagraphIndex < range.end
+      range => clampedParagraphIndex >= range.start && clampedParagraphIndex < range.end
     );
 
     if (pageIndex !== -1) {
       setCurrentPage(pageIndex);
-    } else {
-      // 如果找不到（可能是段落索引超出范围），则设为第一页
-      setCurrentPage(0);
+      appliedInitialPageRef.current = { chapterId: chapter.id, paragraphIndex: initialParagraphIndex };
     }
   }, [pageRanges, initialParagraphIndex, chapter.id]);
+
+  // 当章节变化时重置初始页应用状态
+  useEffect(() => {
+    appliedInitialPageRef.current = null;
+  }, [chapter.id]);
 
   // 重置标注计数（章节切换时）
   useEffect(() => {
@@ -548,221 +560,216 @@ const Reader: React.FC<ReaderProps> = ({
 
         {/* 顶部标题栏 - 移动端显示下拉菜单，桌面端只显示信息和操作按钮 */}
         {hasActiveBook && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center shadow-sm flex-shrink-0">
-          {/* 移动端：图书选择按钮 - 只在 md 以下屏幕显示 */}
-          <div className="relative md:hidden">
-          <button
-            onClick={() => setShowBookMenu(!showBookMenu)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-            title="选择图书"
-          >
-            <BookOpen size={16} />
-            <span className="hidden sm:inline max-w-[150px] truncate">{bookTitle}</span>
-          </button>
+          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center shadow-sm flex-shrink-0">
+            {/* 移动端：图书选择按钮 - 只在 md 以下屏幕显示 */}
+            <div className="relative md:hidden">
+              <button
+                onClick={() => setShowBookMenu(!showBookMenu)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                title="选择图书"
+              >
+                <BookOpen size={16} />
+                <span className="hidden sm:inline max-w-[150px] truncate">{bookTitle}</span>
+              </button>
 
-          {/* 图书菜单 */}
-          {showBookMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowBookMenu(false)}
-              />
-              <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto">
-                <div className="p-2">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-md transition-colors"
-                  >
-                    <Plus size={16} />
-                    <span>添加图书</span>
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept=".epub,.pdf,.txt"
-                    onChange={handleFileChange}
-                  />
-                </div>
-                <div className="border-t border-gray-200 dark:border-gray-700">
-                  {books.map(book => (
-                    <div
-                      key={book.id}
-                      className={`group flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                        bookId === book.id ? 'bg-blue-50 dark:bg-gray-700' : ''
-                      }`}
-                    >
-                      <span
-                        onClick={() => {
-                          onSelectBook(book.id);
-                          setShowBookMenu(false);
-                        }}
-                        className={`flex-1 text-sm truncate ${
-                          bookId === book.id ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'
-                        }`}
-                        title={book.title}
-                      >
-                        {book.title}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('确认删除这本书吗？')) {
-                            onDeleteBook(book.id);
-                            setShowBookMenu(false);
-                          }
-                        }}
-                        className="ml-2 p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="删除图书"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-          </div>
-
-          {/* 移动端：章节选择按钮 - 只在 md 以下屏幕显示 */}
-          <div className="relative ml-2 md:hidden">
-          <button
-            onClick={() => setShowChapterMenu(!showChapterMenu)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-            title="选择章节"
-          >
-            <List size={16} />
-            <span className="hidden sm:inline max-w-[150px] truncate">{chapter.title}</span>
-          </button>
-
-          {/* 章节菜单 */}
-          {showChapterMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowChapterMenu(false)}
-              />
-              <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto">
-                {chapters.map(ch => (
+              {/* 图书菜单 */}
+              {showBookMenu && (
+                <>
                   <div
-                    key={ch.id}
-                    onClick={() => {
-                      onSelectChapter(ch.id);
-                      setShowChapterMenu(false);
-                    }}
-                    className={`px-4 py-2 cursor-pointer text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                      activeChapterId === ch.id ? 'bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'
-                    }`}
-                    title={ch.title}
-                  >
-                    {ch.title}
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowBookMenu(false)}
+                  />
+                  <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto">
+                    <div className="p-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+                      >
+                        <Plus size={16} />
+                        <span>添加图书</span>
+                      </button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".epub,.pdf,.txt"
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                    <div className="border-t border-gray-200 dark:border-gray-700">
+                      {books.map(book => (
+                        <div
+                          key={book.id}
+                          className={`group flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${bookId === book.id ? 'bg-blue-50 dark:bg-gray-700' : ''
+                            }`}
+                        >
+                          <span
+                            onClick={() => {
+                              onSelectBook(book.id);
+                              setShowBookMenu(false);
+                            }}
+                            className={`flex-1 text-sm truncate ${bookId === book.id ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'
+                              }`}
+                            title={book.title}
+                          >
+                            {book.title}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm('确认删除这本书吗？')) {
+                                onDeleteBook(book.id);
+                                setShowBookMenu(false);
+                              }
+                            }}
+                            className="ml-2 p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="删除图书"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-          </div>
+                </>
+              )}
+            </div>
 
-          {/* 桌面端：当前书籍和章节标题 - 只在 md 以上屏幕显示 */}
-          <div className="hidden md:flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-            <BookOpen size={16} className="text-gray-400 dark:text-gray-500" />
-            <span className="font-medium max-w-[200px] truncate">{bookTitle}</span>
-            <span className="text-gray-400 dark:text-gray-500">/</span>
-            <span className="max-w-[250px] truncate">{chapter.title}</span>
-          </div>
+            {/* 移动端：章节选择按钮 - 只在 md 以下屏幕显示 */}
+            <div className="relative ml-2 md:hidden">
+              <button
+                onClick={() => setShowChapterMenu(!showChapterMenu)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                title="选择章节"
+              >
+                <List size={16} />
+                <span className="hidden sm:inline max-w-[150px] truncate">{chapter.title}</span>
+              </button>
 
-          {/* 生词统计 */}
-          {wordAnalysis.totalNewWords > 0 && (
-            <span className="ml-2 text-xs text-orange-500 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 px-2 py-1 rounded hidden lg:inline">
-              {Math.min(annotatedNewWordsCount, wordAnalysis.totalNewWords)} /{' '}
-              {wordAnalysis.totalNewWords} 生词
-            </span>
-          )}
+              {/* 章节菜单 */}
+              {showChapterMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowChapterMenu(false)}
+                  />
+                  <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto">
+                    {chapters.map(ch => (
+                      <div
+                        key={ch.id}
+                        onClick={() => {
+                          onSelectChapter(ch.id);
+                          setShowChapterMenu(false);
+                        }}
+                        className={`px-4 py-2 cursor-pointer text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${activeChapterId === ch.id ? 'bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'
+                          }`}
+                        title={ch.title}
+                      >
+                        {ch.title}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
 
-          {/* 页码显示 */}
-          <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 mr-2">
-            {currentPage + 1}/{totalPages}
-          </span>
+            {/* 桌面端：当前书籍和章节标题 - 只在 md 以上屏幕显示 */}
+            <div className="hidden md:flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <BookOpen size={16} className="text-gray-400 dark:text-gray-500" />
+              <span className="font-medium max-w-[200px] truncate">{bookTitle}</span>
+              <span className="text-gray-400 dark:text-gray-500">/</span>
+              <span className="max-w-[250px] truncate">{chapter.title}</span>
+            </div>
 
-          {/* 右侧：同步、生词本和设置按钮 - 只在移动端显示，桌面端在侧边栏 */}
-          <div className="flex items-center gap-1 md:hidden">
-          <button
-            onClick={handleSyncClick}
-            className={`p-2 transition-colors rounded-md ${
-              syncStatus === 'syncing'
-                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="同步"
-            disabled={syncStatus === 'syncing'}
-          >
-            <RefreshCw size={18} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
-          </button>
-
-          <button
-            onClick={() => setShowVocabulary(true)}
-            className="relative p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors"
-            title="生词本"
-          >
-            <GraduationCap size={18} />
-            {unstudiedCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
-                {unstudiedCount > 99 ? '99' : unstudiedCount}
+            {/* 生词统计 */}
+            {wordAnalysis.totalNewWords > 0 && (
+              <span className="ml-2 text-xs text-orange-500 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 px-2 py-1 rounded hidden lg:inline">
+                {Math.min(annotatedNewWordsCount, wordAnalysis.totalNewWords)} /{' '}
+                {wordAnalysis.totalNewWords} 生词
               </span>
             )}
-          </button>
 
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-            title="设置"
-          >
-            <Settings size={18} />
-          </button>
+            {/* 页码显示 */}
+            <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 mr-2">
+              {currentPage + 1}/{totalPages}
+            </span>
+
+            {/* 右侧：同步、生词本和设置按钮 - 只在移动端显示，桌面端在侧边栏 */}
+            <div className="flex items-center gap-1 md:hidden">
+              <button
+                onClick={handleSyncClick}
+                className={`p-2 transition-colors rounded-md ${syncStatus === 'syncing'
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                title="同步"
+                disabled={syncStatus === 'syncing'}
+              >
+                <RefreshCw size={18} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+              </button>
+
+              <button
+                onClick={() => setShowVocabulary(true)}
+                className="relative p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors"
+                title="生词本"
+              >
+                <GraduationCap size={18} />
+                {unstudiedCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+                    {unstudiedCount > 99 ? '99' : unstudiedCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                title="设置"
+              >
+                <Settings size={18} />
+              </button>
+            </div>
           </div>
-        </div>
         )}
 
         {/* 移动端：无书籍时的顶部栏 */}
         {!hasActiveBook && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between shadow-sm flex-shrink-0 md:hidden">
-          <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="Logo" className="w-6 h-6" />
-            <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">E-Book Lingo Reader</span>
+          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between shadow-sm flex-shrink-0 md:hidden">
+            <div className="flex items-center gap-2">
+              <img src="/logo.svg" alt="Logo" className="w-6 h-6" />
+              <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">E-Book Lingo Reader</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+                title="添加图书"
+              >
+                <Plus size={18} />
+              </button>
+
+              <button
+                onClick={handleSyncClick}
+                className={`p-2 transition-colors rounded-md ${syncStatus === 'syncing'
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                title="同步"
+                disabled={syncStatus === 'syncing'}
+              >
+                <RefreshCw size={18} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+              </button>
+
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                title="设置"
+              >
+                <Settings size={18} />
+              </button>
+            </div>
           </div>
-
-          <div className="flex items-center gap-1">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-md transition-colors"
-            title="添加图书"
-          >
-            <Plus size={18} />
-          </button>
-
-          <button
-            onClick={handleSyncClick}
-            className={`p-2 transition-colors rounded-md ${
-              syncStatus === 'syncing'
-                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="同步"
-            disabled={syncStatus === 'syncing'}
-          >
-            <RefreshCw size={18} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
-          </button>
-
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-            title="设置"
-          >
-            <Settings size={18} />
-          </button>
-          </div>
-        </div>
         )}
 
         {/* Settings Modal - 只在移动端使用 */}
@@ -782,32 +789,32 @@ const Reader: React.FC<ReaderProps> = ({
 
         {/* 内容区域 */}
         {hasActiveBook ? (
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto cursor-pointer"
-          style={{ touchAction: 'none' }}
-          onClick={handleContentClick}
-          {...bind()}
-        >
-          <div className="max-w-3xl mx-auto px-8 py-12 min-h-full pointer-events-none">
-            <div className="pointer-events-auto">
-              {processText(currentPageParagraphs)}
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto cursor-pointer"
+            style={{ touchAction: 'none' }}
+            onClick={handleContentClick}
+            {...bind()}
+          >
+            <div className="max-w-3xl mx-auto px-8 py-12 min-h-full pointer-events-none">
+              <div className="pointer-events-auto">
+                {processText(currentPageParagraphs)}
+              </div>
             </div>
           </div>
-        </div>
         ) : (
-        /* 无书籍时的欢迎页面 */
-        <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-col gap-4 px-4">
-          <BookOpen size={64} className="text-gray-300 dark:text-gray-600" />
-          <p className="text-lg text-gray-500 dark:text-gray-400 text-center">欢迎使用 E-Book Lingo Reader</p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center max-w-md">
-            点击左侧侧边栏的 <Plus size={14} className="inline" /> 按钮上传 EPUB 或 TXT 文件开始阅读，或使用 <RefreshCw size={14} className="inline" /> 按钮从 WebDAV 同步书籍
-          </p>
-          {/* 移动端提示 */}
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center max-w-md md:hidden">
-            点击右上角的 <Plus size={14} className="inline" /> 按钮上传图书，或使用 <RefreshCw size={14} className="inline" /> 按钮同步书籍
-          </p>
-        </div>
+          /* 无书籍时的欢迎页面 */
+          <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-col gap-4 px-4">
+            <BookOpen size={64} className="text-gray-300 dark:text-gray-600" />
+            <p className="text-lg text-gray-500 dark:text-gray-400 text-center">欢迎使用 E-Book Lingo Reader</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 text-center max-w-md">
+              点击左侧侧边栏的 <Plus size={14} className="inline" /> 按钮上传 EPUB 或 TXT 文件开始阅读，或使用 <RefreshCw size={14} className="inline" /> 按钮从 WebDAV 同步书籍
+            </p>
+            {/* 移动端提示 */}
+            <p className="text-sm text-gray-400 dark:text-gray-500 text-center max-w-md md:hidden">
+              点击右上角的 <Plus size={14} className="inline" /> 按钮上传图书，或使用 <RefreshCw size={14} className="inline" /> 按钮同步书籍
+            </p>
+          </div>
         )}
       </div>
     </div>
