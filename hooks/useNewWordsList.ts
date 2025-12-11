@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NewWord } from '../types';
-import { syncDirtyFlags } from '../services/syncService';
+import { syncDirtyFlags, localNewWordsPageTimestamps } from '../services/syncService';
 import { storageService } from '../services/storageService';
 
 interface UseNewWordsListReturn {
@@ -109,8 +109,9 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
         console.log(`➕ 添加生词 "${word.word}"`);
       }
 
-      // 标记为脏数据
+      // 标记为脏数据，并更新第0页时间戳（新生词总是在第0页，按时间倒序）
       syncDirtyFlags.set('newWords');
+      localNewWordsPageTimestamps.markPageUpdated(0);
 
       // 重新加载生词列表
       await loadInitialWords();
@@ -126,6 +127,8 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
     try {
       await storageService.deleteNewWord(word);
       syncDirtyFlags.set('newWords');
+      // 删除生词会影响分页，简单起见标记第0页
+      localNewWordsPageTimestamps.markPageUpdated(0);
       await loadInitialWords();
       console.log(`🗑️ 删除生词 "${word}"`);
     } catch (err) {
@@ -207,6 +210,7 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
         };
         await storageService.saveNewWord(updated);
         syncDirtyFlags.set('newWords');
+        localNewWordsPageTimestamps.markPageUpdated(0);
         await loadInitialWords();
         console.log(`✅ 标记生词 "${word}" 为已掌握`);
       }
@@ -235,6 +239,7 @@ export const useNewWordsList = (): UseNewWordsListReturn => {
         };
         await storageService.saveNewWord(updated);
         syncDirtyFlags.set('newWords');
+        localNewWordsPageTimestamps.markPageUpdated(0);
         await loadInitialWords();
         console.log(`⚠️ 标记生词 "${word}" 为困难词`);
       }

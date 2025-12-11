@@ -127,6 +127,114 @@ class SyncDirtyFlags {
 // 导出脏数据标记管理器实例
 export const syncDirtyFlags = new SyncDirtyFlags();
 
+// 页级时间戳存储 key
+const NEW_WORDS_PAGE_TIMESTAMPS_KEY = 'new_words_page_timestamps';
+
+/**
+ * 生词表页级时间戳管理器
+ * 用于追踪每页生词的本地更新时间，实现分页增量同步
+ */
+class LocalNewWordsPageTimestamps {
+  private timestamps: Map<number, string>;
+
+  constructor() {
+    this.timestamps = this.load();
+  }
+
+  /**
+   * 从 localStorage 加载时间戳
+   */
+  private load(): Map<number, string> {
+    try {
+      const stored = localStorage.getItem(NEW_WORDS_PAGE_TIMESTAMPS_KEY);
+      if (stored) {
+        const obj = JSON.parse(stored) as Record<string, string>;
+        const map = new Map<number, string>();
+        Object.entries(obj).forEach(([key, value]) => {
+          map.set(parseInt(key), value);
+        });
+        return map;
+      }
+    } catch (error) {
+      console.error('加载页级时间戳失败:', error);
+    }
+    return new Map();
+  }
+
+  /**
+   * 保存时间戳到 localStorage
+   */
+  private save(): void {
+    const obj: Record<string, string> = {};
+    this.timestamps.forEach((value, key) => {
+      obj[key.toString()] = value;
+    });
+    localStorage.setItem(NEW_WORDS_PAGE_TIMESTAMPS_KEY, JSON.stringify(obj));
+  }
+
+  /**
+   * 标记某页已更新
+   */
+  markPageUpdated(pageIndex: number, timestamp?: string): void {
+    this.timestamps.set(pageIndex, timestamp || new Date().toISOString());
+    this.save();
+  }
+
+  /**
+   * 获取某页的时间戳
+   */
+  getPageTimestamp(pageIndex: number): string | null {
+    return this.timestamps.get(pageIndex) || null;
+  }
+
+  /**
+   * 获取所有页的时间戳
+   */
+  getAllTimestamps(): Map<number, string> {
+    return new Map(this.timestamps);
+  }
+
+  /**
+   * 通过远程元数据同步本地时间戳（首次同步时使用）
+   */
+  syncFromRemoteMeta(pages: { pageIndex: number; updatedAt: string }[]): void {
+    pages.forEach(page => {
+      // 只有本地没有时间戳时才设置远程时间戳
+      if (!this.timestamps.has(page.pageIndex)) {
+        this.timestamps.set(page.pageIndex, page.updatedAt);
+      }
+    });
+    this.save();
+  }
+
+  /**
+   * 清除所有时间戳（用于重置）
+   */
+  clear(): void {
+    this.timestamps.clear();
+    this.save();
+  }
+
+  /**
+   * 移除超出总页数的时间戳
+   */
+  pruneExcessPages(totalPages: number): void {
+    const keysToRemove: number[] = [];
+    this.timestamps.forEach((_, pageIndex) => {
+      if (pageIndex >= totalPages) {
+        keysToRemove.push(pageIndex);
+      }
+    });
+    keysToRemove.forEach(key => this.timestamps.delete(key));
+    if (keysToRemove.length > 0) {
+      this.save();
+    }
+  }
+}
+
+// 导出页级时间戳管理器实例
+export const localNewWordsPageTimestamps = new LocalNewWordsPageTimestamps();
+
 /**
  * 同步服务类 - 重构版
  * 提供分离式数据同步、智能合并等功能
@@ -389,11 +497,12 @@ class SyncService {
   }
 
   /**
-   * 同步生词表（分页版本）
+   * 同步生词表（分页增量版本）
+   * 优化逻辑：只同步有变更的页，减少网络传输
    */
   async syncNewWords(onProgress?: (current: number, total: number) => void): Promise<void> {
     try {
-      console.log('开始同步生词表（分页）...');
+      console.log('开始同步生词表（分页增量）...');
 
       // 确保目录存在
       await webdavService.ensureDirectory(NEW_WORDS_DIR);
@@ -406,64 +515,160 @@ class SyncService {
       const remoteMeta = await this.downloadNewWordsMeta();
 
       if (!remoteMeta) {
-        // 远程没有数据，上传本地所有数据
+        // 远程没有数据，上传本地所有数据并初始化时间戳
         console.log('远程无生词表，上传本地数据');
         await this.uploadNewWordsMeta(localMeta);
 
         for (let i = 0; i < localMeta.totalPages; i++) {
           const offset = i * NEW_WORDS_PAGE_SIZE;
           const words = await storageService.loadNewWords(offset, NEW_WORDS_PAGE_SIZE);
+          const pageTimestamp = localMeta.pages[i]?.updatedAt || new Date().toISOString();
           await this.uploadNewWordsPage({
             pageIndex: i,
             words,
-            updatedAt: localMeta.pages[i].updatedAt,
+            updatedAt: pageTimestamp,
           });
+          // 记录本地页时间戳
+          localNewWordsPageTimestamps.markPageUpdated(i, pageTimestamp);
           onProgress?.(i + 1, localMeta.totalPages);
         }
+        console.log('首次上传完成');
         return;
       }
 
       console.log(`远程生词表: ${remoteMeta.totalCount} 个，${remoteMeta.totalPages} 页`);
 
-      // 3. 比较并同步每一页
-      const allRemoteWords: NewWord[] = [];
-      const downloadedPages = new Set<number>();
+      // 3. 构建远程页时间戳索引
+      const remotePageTimestamps = new Map<number, string>();
+      remoteMeta.pages.forEach(page => {
+        remotePageTimestamps.set(page.pageIndex, page.updatedAt);
+      });
 
-      // 下载远程所有页
-      for (let i = 0; i < remoteMeta.totalPages; i++) {
-        const remotePage = await this.downloadNewWordsPage(i);
-        if (remotePage) {
-          allRemoteWords.push(...remotePage.words);
-          downloadedPages.add(i);
+      // 4. 分析哪些页需要同步
+      const pagesToDownload: number[] = []; // 远程比本地新的页
+      const pagesToUpload: number[] = [];   // 本地比远程新的页
+      const pagesToMerge: number[] = [];    // 双方都有更新的页（需合并后上传）
+
+      const maxPages = Math.max(localMeta.totalPages, remoteMeta.totalPages);
+
+      for (let i = 0; i < maxPages; i++) {
+        const localTimestamp = localNewWordsPageTimestamps.getPageTimestamp(i);
+        const remoteTimestamp = remotePageTimestamps.get(i);
+
+        if (!remoteTimestamp && i < localMeta.totalPages) {
+          // 远程没有此页，本地有 → 需要上传
+          pagesToUpload.push(i);
+        } else if (!localTimestamp && remoteTimestamp) {
+          // 本地没有时间戳，远程有 → 需要下载（可能是首次同步或新设备）
+          pagesToDownload.push(i);
+        } else if (localTimestamp && remoteTimestamp) {
+          const localTime = new Date(localTimestamp).getTime();
+          const remoteTime = new Date(remoteTimestamp).getTime();
+
+          if (remoteTime > localTime) {
+            // 远程更新 → 下载
+            pagesToDownload.push(i);
+          } else if (localTime > remoteTime) {
+            // 本地更新 → 上传
+            pagesToUpload.push(i);
+          }
+          // 如果时间相同，无需同步
         }
-        onProgress?.(i + 1, remoteMeta.totalPages + localMeta.totalPages);
       }
 
-      // 4. 下载本地所有生词并合并
-      const localWords = await storageService.loadNewWords(0);
-      const mergedWords = this.mergeNewWordsList(localWords, allRemoteWords);
+      console.log(`需下载 ${pagesToDownload.length} 页，需上传 ${pagesToUpload.length} 页`);
 
-      // 5. 保存合并后的数据到本地
-      await storageService.saveAllNewWords(mergedWords);
-      console.log(`合并后生词数: ${mergedWords.length}`);
-
-      // 6. 重新生成元数据并上传
-      const newMeta = await this.collectLocalNewWordsMeta();
-      await this.uploadNewWordsMeta(newMeta);
-
-      // 7. 上传所有页
-      for (let i = 0; i < newMeta.totalPages; i++) {
-        const offset = i * NEW_WORDS_PAGE_SIZE;
-        const words = await storageService.loadNewWords(offset, NEW_WORDS_PAGE_SIZE);
-        await this.uploadNewWordsPage({
-          pageIndex: i,
-          words,
-          updatedAt: newMeta.pages[i].updatedAt,
-        });
-        onProgress?.(remoteMeta.totalPages + i + 1, remoteMeta.totalPages + newMeta.totalPages);
+      // 如果没有需要同步的页，直接返回
+      if (pagesToDownload.length === 0 && pagesToUpload.length === 0) {
+        console.log('生词表无变更，跳过同步');
+        onProgress?.(1, 1);
+        return;
       }
 
-      console.log('生词表同步完成');
+      const totalOperations = pagesToDownload.length + pagesToUpload.length;
+      let completedOperations = 0;
+
+      // 5. 下载远程更新的页并合并到本地
+      for (const pageIndex of pagesToDownload) {
+        const remotePage = await this.downloadNewWordsPage(pageIndex);
+        if (remotePage) {
+          // 获取本地对应页的生词
+          const offset = pageIndex * NEW_WORDS_PAGE_SIZE;
+          const localPageWords = await storageService.loadNewWords(offset, NEW_WORDS_PAGE_SIZE);
+          
+          // 合并远程和本地生词
+          const mergedWords = this.mergeNewWordsList(localPageWords, remotePage.words);
+          
+          // 保存合并后的生词（需要全量替换该页）
+          // 注意：这里简化处理，直接替换整个生词库后重新分页
+          // 对于更高效的实现，可以考虑按页存储
+          console.log(`下载并合并第 ${pageIndex} 页，${remotePage.words.length} 个生词`);
+          
+          // 更新本地时间戳为远程时间
+          localNewWordsPageTimestamps.markPageUpdated(pageIndex, remotePage.updatedAt);
+          
+          // 如果合并后有变化，标记需要上传
+          if (mergedWords.length > remotePage.words.length) {
+            pagesToMerge.push(pageIndex);
+          }
+        }
+        completedOperations++;
+        onProgress?.(completedOperations, totalOperations);
+      }
+
+      // 6. 如果有下载操作，需要重新加载所有生词、合并后保存
+      if (pagesToDownload.length > 0) {
+        const allRemoteWords: NewWord[] = [];
+        for (const pageIndex of pagesToDownload) {
+          const remotePage = await this.downloadNewWordsPage(pageIndex);
+          if (remotePage) {
+            allRemoteWords.push(...remotePage.words);
+          }
+        }
+        
+        const localWords = await storageService.loadNewWords(0);
+        const mergedWords = this.mergeNewWordsList(localWords, allRemoteWords);
+        await storageService.saveAllNewWords(mergedWords);
+        console.log(`合并后总生词数: ${mergedWords.length}`);
+        
+        // 触发生词表更新事件
+        window.dispatchEvent(new CustomEvent('sync-newwords-updated'));
+      }
+
+      // 7. 上传本地更新的页
+      const pagesToActuallyUpload = [...new Set([...pagesToUpload, ...pagesToMerge])];
+      
+      // 重新收集本地元数据（因为可能有合并）
+      const updatedLocalMeta = await this.collectLocalNewWordsMeta();
+      
+      for (const pageIndex of pagesToActuallyUpload) {
+        if (pageIndex < updatedLocalMeta.totalPages) {
+          const offset = pageIndex * NEW_WORDS_PAGE_SIZE;
+          const words = await storageService.loadNewWords(offset, NEW_WORDS_PAGE_SIZE);
+          const pageTimestamp = new Date().toISOString();
+          
+          await this.uploadNewWordsPage({
+            pageIndex,
+            words,
+            updatedAt: pageTimestamp,
+          });
+          
+          // 更新本地时间戳
+          localNewWordsPageTimestamps.markPageUpdated(pageIndex, pageTimestamp);
+          console.log(`上传第 ${pageIndex} 页，${words.length} 个生词`);
+        }
+        completedOperations++;
+        onProgress?.(completedOperations, totalOperations);
+      }
+
+      // 8. 更新远程元数据
+      const finalMeta = await this.collectLocalNewWordsMeta();
+      await this.uploadNewWordsMeta(finalMeta);
+
+      // 9. 清理多余的页时间戳
+      localNewWordsPageTimestamps.pruneExcessPages(finalMeta.totalPages);
+
+      console.log('生词表增量同步完成');
     } catch (error) {
       console.error('生词表同步失败:', error);
       throw error;
@@ -1059,11 +1264,37 @@ class SyncService {
       };
       await this.uploadBooksMeta(booksMeta);
 
-      const newWords: NewWordsData = {
-        words: oldData.newWords,
+      // 生词表需要分页上传
+      const words = oldData.newWords;
+      const totalPages = Math.ceil(words.length / NEW_WORDS_PAGE_SIZE);
+      
+      // 上传生词表元数据
+      const newWordsMeta: NewWordsMetadata = {
+        totalCount: words.length,
+        pageSize: NEW_WORDS_PAGE_SIZE,
+        totalPages,
+        pages: [],
         updatedAt: oldData.updatedAt,
       };
-      await this.uploadNewWords(newWords);
+      
+      for (let i = 0; i < totalPages; i++) {
+        const start = i * NEW_WORDS_PAGE_SIZE;
+        const end = Math.min(start + NEW_WORDS_PAGE_SIZE, words.length);
+        const pageWords = words.slice(start, end);
+        
+        newWordsMeta.pages.push({
+          pageIndex: i,
+          wordCount: pageWords.length,
+          updatedAt: oldData.updatedAt,
+        });
+        
+        await this.uploadNewWordsPage({
+          pageIndex: i,
+          words: pageWords,
+          updatedAt: oldData.updatedAt,
+        });
+      }
+      await this.uploadNewWordsMeta(newWordsMeta);
 
       const progress: ReadingProgressData = {
         progress: oldData.readingProgress,
