@@ -5,32 +5,35 @@ import { syncDirtyFlags } from '../services/syncService';
 const STORAGE_KEY = 'reading_progress';
 
 /**
+ * 同步读取阅读进度（供初始化时使用）
+ */
+export function loadProgressSync(): ReadingProgress[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && stored !== 'undefined' && stored !== 'null') {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('同步加载阅读进度失败:', error);
+    localStorage.removeItem(STORAGE_KEY);
+  }
+  return [];
+}
+
+/**
  * 阅读进度管理 Hook
  * 用于保存和恢复用户的阅读进度（章节+段落位置）
  */
 export function useReadingProgress() {
-  const [progressList, setProgressList] = useState<ReadingProgress[]>([]);
+  // 同步初始化，避免异步加载导致的时序问题
+  const [progressList, setProgressList] = useState<ReadingProgress[]>(() => loadProgressSync());
 
   // 从 localStorage 加载进度
   const loadProgress = useCallback(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && stored !== 'undefined' && stored !== 'null') {
-        const parsed = JSON.parse(stored);
-        console.log('🔄 重新加载阅读进度:', parsed);
-        setProgressList(parsed);
-      }
-    } catch (error) {
-      console.error('加载阅读进度失败:', error);
-      // 清除无效数据
-      localStorage.removeItem(STORAGE_KEY);
-    }
+    const loaded = loadProgressSync();
+    console.log('🔄 重新加载阅读进度:', loaded);
+    setProgressList(loaded);
   }, []);
-
-  // 初始加载
-  useEffect(() => {
-    loadProgress();
-  }, [loadProgress]);
 
   // 监听同步事件，自动重新加载
   useEffect(() => {

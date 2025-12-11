@@ -9,7 +9,7 @@ import { Loader2, BookOpen, RefreshCw } from 'lucide-react';
 import { WordProvider } from './context/WordContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { WordModal } from './components/WordModal';
-import { useReadingProgress } from './hooks/useReadingProgress';
+import { useReadingProgress, loadProgressSync } from './hooks/useReadingProgress';
 import { useWebDAVSync } from './hooks/useWebDAVSync';
 
 function AppContent() {
@@ -195,21 +195,46 @@ function AppContent() {
           setBooks(loadedBooks);
           setBookFiles(loadedFiles);
 
-          // 如果有书籍，选择第一本
-          if (!activeBookId) {
-            const firstBook = loadedBooks[0];
-            //console.log('第一本书:', firstBook);
-            //console.log('第一本书的章节:', firstBook?.chapters);
-            console.log('第一本书的章节数量:', firstBook?.chapters?.length);
+          // 同步获取阅读进度，一次性计算初始状态
+          const savedProgress = loadProgressSync();
+          console.log('同步获取阅读进度:', savedProgress);
 
-            if (firstBook && firstBook.id) {
-              setActiveBookId(firstBook.id);
-              // 注意：不在这里设置 activeChapterId，因为此时 progressList 可能还未加载
-              // 阅读进度恢复将在下面的 useEffect 中处理
-            } else {
-              console.error('第一本书数据无效:', firstBook);
+          // 查找有效的阅读进度
+          const validProgress = savedProgress.filter(p => loadedBooks.some(b => b.id === p.bookId));
+          let targetBookId = '';
+          let targetChapterId = '';
+
+          if (validProgress.length > 0) {
+            // 找到最近更新的阅读进度
+            const latest = validProgress.reduce((acc, curr) => {
+              const accTime = new Date(acc.updatedAt).getTime();
+              const currTime = new Date(curr.updatedAt).getTime();
+              return currTime > accTime ? curr : acc;
+            });
+
+            const targetBook = loadedBooks.find(b => b.id === latest.bookId);
+            if (targetBook && targetBook.chapters.length > 0) {
+              targetBookId = targetBook.id;
+              const targetChapter = targetBook.chapters[latest.chapterIndex] ?? targetBook.chapters[0];
+              targetChapterId = targetChapter?.id || targetBook.chapters[0].id;
+              console.log(`恢复到书籍 ${targetBook.title}, 第 ${latest.chapterIndex} 章`);
             }
           }
+
+          // 如果没有有效的阅读进度，使用第一本书
+          if (!targetBookId) {
+            const firstBook = loadedBooks[0];
+            if (firstBook && firstBook.id) {
+              targetBookId = firstBook.id;
+              targetChapterId = firstBook.chapters?.[0]?.id || '';
+              console.log(`没有阅读进度，使用第一本书: ${firstBook.title}`);
+            }
+          }
+
+          // 一次性设置所有初始状态
+          setActiveBookId(targetBookId);
+          setActiveChapterId(targetChapterId);
+          console.log(`初始化完成: bookId=${targetBookId}, chapterId=${targetChapterId}`);
         } else {
           console.log('没有存储的书籍数据，MOCK_BOOKS 数量:', MOCK_BOOKS.length);
           // 如果没有存储的书籍，使用示例书籍
@@ -270,9 +295,10 @@ function AppContent() {
     }
   }, [isInitialLoad, manualSync]);
 
-  // 当阅读进度有更晚的时间戳时，自动聚焦到对应的书籍与章节，保证多设备同步后定位正确
+  // 当阅读进度有更晚的时间戳时（同步后），自动聚焦到对应的书籍与章节
   useEffect(() => {
-    if (books.length === 0 || progressList.length === 0) return;
+    // 仅在初始化完成后响应进度变化
+    if (isInitialLoad || books.length === 0 || progressList.length === 0) return;
 
     const validProgress = progressList.filter(p => books.some(b => b.id === p.bookId));
     if (validProgress.length === 0) return;
@@ -292,43 +318,11 @@ function AppContent() {
     const targetChapter = targetBook.chapters[latest.chapterIndex] ?? targetBook.chapters[0];
     if (!targetChapter) return;
 
+    console.log(`📖 同步后应用阅读进度: ${targetBook.title}, 第 ${latest.chapterIndex} 章`);
     setActiveBookId(targetBook.id);
     setActiveChapterId(targetChapter.id);
     setLastProgressAppliedAt(latestTime);
-  }, [books, progressList, lastProgressAppliedAt]);
-
-  // 从阅读进度恢复章节位置（当 progressList 加载完成后）
-  useEffect(() => {
-    if (activeBookId && books.length > 0 && !activeChapterId) {
-      const book = books.find(b => b.id === activeBookId);
-
-      if (book && book.chapters.length > 0) {
-        // 尝试从进度列表中查找该书籍的进度
-        const progress = progressList.find(p => p.bookId === activeBookId);
-        console.log('恢复阅读进度:', progress);
-
-        if (progress && book.chapters[progress.chapterIndex]) {
-          console.log(`恢复到第 ${progress.chapterIndex} 章，段落索引 ${progress.paragraphIndex}`);
-          setActiveChapterId(book.chapters[progress.chapterIndex].id);
-        } else {
-          console.log('没有阅读进度，从第一章开始');
-          setActiveChapterId(book.chapters[0].id);
-        }
-      }
-    }
-  }, [activeBookId, books, activeChapterId, progressList]);
-
-  // 当切换书籍时，确保章节ID有效
-  useEffect(() => {
-    if (activeBook && currentBookChapters.length > 0 && activeChapterId) {
-      const exists = currentBookChapters.find(c => c.id === activeChapterId);
-      // 只有在章节ID确实无效时才重置，避免干扰阅读进度恢复
-      if (!exists && !isInitialLoad) {
-        console.log('当前章节ID无效，重置为第一章');
-        setActiveChapterId(currentBookChapters[0].id);
-      }
-    }
-  }, [activeBookId, activeBook, currentBookChapters, isInitialLoad]);
+  }, [books, progressList, lastProgressAppliedAt, isInitialLoad]);
 
   const handleSelectBook = (id: string) => {
     setActiveBookId(id);
