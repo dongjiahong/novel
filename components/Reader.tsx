@@ -60,7 +60,7 @@ const Reader: React.FC<ReaderProps> = ({
   isWebDAVConfigured
 }) => {
   const { checkIsKnown, newWords, dictionarySize } = useWordContext();
-  const { readingTheme } = useTheme();
+  const { readingTheme, setReadingTheme } = useTheme();
   const currentTheme = READING_THEMES[readingTheme];
   
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
