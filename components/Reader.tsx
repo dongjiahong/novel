@@ -4,10 +4,14 @@ import { Chapter, Book, SyncStatus, SyncProgress } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
 import { lookupWord, normalizeWord, wordsMatch } from '../services/dictionaryService';
-import { Settings, RefreshCw, BookOpen, List, Plus, Trash2, GraduationCap } from 'lucide-react';
+import { Settings, RefreshCw, BookOpen, List, Plus, Trash2, GraduationCap, Palette } from 'lucide-react';
 import SettingsModal from './Settings';
 import Sidebar from './Sidebar';
 import { VocabularyModal } from './VocabularyModal';
+import { useTheme } from '../context/ThemeContext';
+import { READING_THEMES } from '../constants';
+import { ReadingTheme } from '../types';
+import { ThemeSwatch } from './ThemeSwatch';
 
 interface ReaderProps {
   chapter: Chapter;
@@ -56,6 +60,9 @@ const Reader: React.FC<ReaderProps> = ({
   isWebDAVConfigured
 }) => {
   const { checkIsKnown, newWords, dictionarySize } = useWordContext();
+  const { readingTheme } = useTheme();
+  const currentTheme = READING_THEMES[readingTheme];
+  
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageRanges, setPageRanges] = useState<{ start: number; end: number }[]>([{ start: 0, end: 0 }]);
@@ -65,6 +72,7 @@ const Reader: React.FC<ReaderProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [showBookMenu, setShowBookMenu] = useState(false);
   const [showChapterMenu, setShowChapterMenu] = useState(false);
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showVocabulary, setShowVocabulary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -443,14 +451,14 @@ const Reader: React.FC<ReaderProps> = ({
       // 标题检测
       if (paragraph.trim().startsWith('# ')) {
         return (
-          <h1 key={pIndex} className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6 mt-4">
+          <h1 key={pIndex} className="text-2xl font-bold mb-6 mt-4" style={{ color: currentTheme.text }}>
             {paragraph.replace('# ', '')}
           </h1>
         );
       }
       if (paragraph.trim().startsWith('**')) {
         return (
-          <h2 key={pIndex} className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4 mt-4">
+          <h2 key={pIndex} className="text-lg font-bold mb-4 mt-4" style={{ color: currentTheme.text }}>
             {paragraph.replace(/\*\*/g, '')}
           </h2>
         );
@@ -460,7 +468,7 @@ const Reader: React.FC<ReaderProps> = ({
       const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
 
       return (
-        <p key={pIndex} className="mb-3 leading-[3rem] text-lg text-gray-700 dark:text-gray-200 font-serif text-justify">
+        <p key={pIndex} className="mb-3 leading-[3rem] text-lg font-serif text-justify" style={{ color: currentTheme.text }}>
           {tokens.map((token, tIndex) => {
             if (!token) return null;
 
@@ -548,12 +556,13 @@ const Reader: React.FC<ReaderProps> = ({
       </div>
 
       {/* 主内容区域 */}
-      <div className="flex-1 h-full overflow-hidden bg-white dark:bg-gray-900 relative flex flex-col">
+      <div className="flex-1 h-full overflow-hidden relative flex flex-col" style={{ backgroundColor: currentTheme.background }}>
         {/* 隐藏的测量容器 */}
         <div
           ref={measureRef}
           className="fixed top-0 left-0 invisible pointer-events-none max-w-3xl px-8 py-12 w-full md:w-[calc(100vw-16rem)]"
           aria-hidden="true"
+          style={{ backgroundColor: currentTheme.background, color: currentTheme.text }}
         >
           {paragraphs.map((p, i) => renderMeasureParagraph(p, i))}
         </div>
@@ -667,6 +676,40 @@ const Reader: React.FC<ReaderProps> = ({
                       >
                         {ch.title}
                       </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* 移动端：主题选择按钮 - 只在 md 以下屏幕显示 */}
+            <div className="relative ml-2 md:hidden">
+              <button
+                onClick={() => setShowThemeMenu(!showThemeMenu)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                title="选择主题"
+              >
+                <Palette size={16} />
+              </button>
+
+              {/* 主题菜单 */}
+              {showThemeMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowThemeMenu(false)}
+                  />
+                  <div className="absolute top-full left-0 mt-1 p-3 flex gap-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    {(['light', 'dark', 'solarized-light', 'solarized-dark'] as ReadingTheme[]).map((t) => (
+                      <ThemeSwatch
+                        key={t}
+                        theme={t}
+                        isActive={readingTheme === t}
+                        onClick={(theme) => {
+                          setReadingTheme(theme);
+                          setShowThemeMenu(false);
+                        }}
+                      />
                     ))}
                   </div>
                 </>
@@ -792,7 +835,7 @@ const Reader: React.FC<ReaderProps> = ({
           <div
             ref={scrollContainerRef}
             className="flex-1 overflow-y-auto cursor-pointer"
-            style={{ touchAction: 'none' }}
+            style={{ touchAction: 'none', backgroundColor: currentTheme.background }}
             onClick={handleContentClick}
             {...bind()}
           >
@@ -804,7 +847,7 @@ const Reader: React.FC<ReaderProps> = ({
           </div>
         ) : (
           /* 无书籍时的欢迎页面 */
-          <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-col gap-4 px-4">
+          <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-col gap-4 px-4" style={{ backgroundColor: currentTheme.background }}>
             <BookOpen size={64} className="text-gray-300 dark:text-gray-600" />
             <p className="text-lg text-gray-500 dark:text-gray-400 text-center">欢迎使用 E-Book Lingo Reader</p>
             <p className="text-sm text-gray-400 dark:text-gray-500 text-center max-w-md">

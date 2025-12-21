@@ -21,6 +21,9 @@ export interface Book {
   chapters: Chapter[];
 }
 
+// Reading Themes
+export type ReadingTheme = 'light' | 'dark' | 'solarized-light' | 'solarized-dark';
+
 // Navigation Items
 export type NavItem = 'library' | 'search' | 'settings' | 'stats';
 

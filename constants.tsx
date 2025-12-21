@@ -3,6 +3,30 @@ import { Book, VocabularyLevel } from './types';
 
 export const MOCK_BOOKS: Book[] = [];
 
+// 阅读主题配置
+export const READING_THEMES = {
+  light: {
+    name: 'Light',
+    background: '#ffffff',
+    text: '#0f172a', // slate-900
+  },
+  dark: {
+    name: 'Dark',
+    background: '#020617', // slate-950
+    text: '#f8fafc', // slate-50
+  },
+  'solarized-light': {
+    name: 'Solarized Light',
+    background: '#fdf6e3',
+    text: '#657b83',
+  },
+  'solarized-dark': {
+    name: 'Solarized Dark',
+    background: '#002b36',
+    text: '#839496',
+  },
+} as const;
+
 // 可用的词汇等级配置
 export const VOCABULARY_LEVELS: VocabularyLevel[] = [
   {

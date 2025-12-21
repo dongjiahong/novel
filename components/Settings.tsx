@@ -26,7 +26,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
 
   const { themeMode, setThemeMode } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'webdav' | 'theme'>('vocabulary');
+  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'webdav'>('vocabulary');
 
   // WebDAV 配置状态
   const [webdavConfig, setWebdavConfig] = useState<WebDAVConfig>({
@@ -107,7 +107,6 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
     { id: 'vocabulary', label: '词汇', icon: Book },
     { id: 'newwords', label: '生词本', icon: BookOpen, count: newWords.length },
     { id: 'webdav', label: '同步', icon: Cloud },
-    { id: 'theme', label: '外观', icon: Palette },
   ] as const;
 
   return (
@@ -135,7 +134,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setActiveTab(tab.id as any)}
                 className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${activeTab === tab.id
                   ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
@@ -468,38 +467,6 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                     )}
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* 主题设置 */}
-          {activeTab === 'theme' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                {[
-                  { mode: 'light', icon: Sun, label: '浅色模式', desc: '清晰明亮' },
-                  { mode: 'dark', icon: Moon, label: '深色模式', desc: '舒适护眼' },
-                ].map((theme) => (
-                  <button
-                    key={theme.mode}
-                    onClick={() => setThemeMode(theme.mode as any)}
-                    className={`flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl border-2 transition-all duration-200 ${themeMode === theme.mode
-                      ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 shadow-sm'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}
-                  >
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full mb-2 sm:mb-3 flex items-center justify-center ${themeMode === theme.mode
-                      ? 'bg-indigo-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-                      }`}>
-                      <theme.icon size={20} className="sm:w-6 sm:h-6" />
-                    </div>
-                    <h4 className={`font-bold text-sm sm:text-base ${themeMode === theme.mode ? 'text-indigo-900 dark:text-indigo-100' : 'text-gray-900 dark:text-white'}`}>
-                      {theme.label}
-                    </h4>
-                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">{theme.desc}</p>
-                  </button>
-                ))}
               </div>
             </div>
           )}

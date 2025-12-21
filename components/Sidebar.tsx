@@ -1,22 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen, RefreshCw, GraduationCap } from 'lucide-react';
-import { Book, Chapter, SyncStatus, SyncProgress } from '../types';
+import { Settings, ChevronDown, ChevronRight, Plus, Trash2, BookOpen, RefreshCw, GraduationCap, Palette } from 'lucide-react';
+import { Book, Chapter, SyncStatus, SyncProgress, ReadingTheme } from '../types';
 import SettingsModal from './Settings';
 import { VocabularyModal } from './VocabularyModal';
 import { useWordContext } from '../context/WordContext';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeSwatch } from './ThemeSwatch';
 
 interface SidebarProps {
-  books: Book[];
-  activeBookId: string;
-  activeChapterId: string;
-  chapters: Chapter[];
-  onSelectBook: (id: string) => void;
-  onSelectChapter: (id: string) => void;
-  onAddBook: (file: File) => void;
-  onDeleteBook: (id: string) => void;
-  syncStatus?: SyncStatus;
-  syncProgress?: SyncProgress | null;
-  onManualSync?: () => Promise<boolean>;
+// ... (omitting props for brevity in match)
   isWebDAVConfigured?: boolean;
 }
 
@@ -36,12 +28,15 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isLibraryOpen, setLibraryOpen] = useState(true);
   const [isTocOpen, setTocOpen] = useState(true);
+  const [isThemesOpen, setThemesOpen] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showVocabulary, setShowVocabulary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { newWords } = useWordContext();
+  const { readingTheme, setReadingTheme } = useTheme();
 
   // 计算未学习单词数量
+// ...
   const unstudiedCount = newWords.filter(w => !w.lastReviewedAt).length;
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,6 +185,30 @@ const Sidebar: React.FC<SidebarProps> = ({
                   暂无书籍
                 </div>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* Themes Section */}
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setThemesOpen(!isThemesOpen)}
+            className="flex items-center w-full px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-medium flex-shrink-0"
+          >
+            {isThemesOpen ? <ChevronDown size={14} className="mr-1" /> : <ChevronRight size={14} className="mr-1" />}
+            阅读主题
+          </button>
+
+          {isThemesOpen && (
+            <div className="px-7 py-2 flex flex-wrap gap-3">
+              {(['light', 'dark', 'solarized-light', 'solarized-dark'] as ReadingTheme[]).map((t) => (
+                <ThemeSwatch
+                  key={t}
+                  theme={t}
+                  isActive={readingTheme === t}
+                  onClick={setReadingTheme}
+                />
+              ))}
             </div>
           )}
         </div>

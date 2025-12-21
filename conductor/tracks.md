@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Comfortable Reading Themes
+## [~] Track: Comfortable Reading Themes
 *Link: [./conductor/tracks/comfortable_themes_20251221/](./conductor/tracks/comfortable_themes_20251221/)*
