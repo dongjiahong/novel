@@ -451,14 +451,14 @@ const Reader: React.FC<ReaderProps> = ({
       // 标题检测
       if (paragraph.trim().startsWith('# ')) {
         return (
-          <h1 key={pIndex} className="text-2xl font-bold mb-6 mt-4" style={{ color: currentTheme.text }}>
+          <h1 key={pIndex} className="text-2xl font-bold mb-8 mt-4" style={{ color: currentTheme.text }}>
             {paragraph.replace('# ', '')}
           </h1>
         );
       }
       if (paragraph.trim().startsWith('**')) {
         return (
-          <h2 key={pIndex} className="text-lg font-bold mb-4 mt-4" style={{ color: currentTheme.text }}>
+          <h2 key={pIndex} className="text-lg font-bold mb-6 mt-4" style={{ color: currentTheme.text }}>
             {paragraph.replace(/\*\*/g, '')}
           </h2>
         );
@@ -468,7 +468,7 @@ const Reader: React.FC<ReaderProps> = ({
       const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
 
       return (
-        <p key={pIndex} className="mb-3 leading-[3rem] text-lg font-serif text-justify" style={{ color: currentTheme.text }}>
+        <p key={pIndex} className="mb-6 leading-[2.75rem] tracking-wide text-lg font-serif text-justify" style={{ color: currentTheme.text }}>
           {tokens.map((token, tIndex) => {
             if (!token) return null;
 
@@ -512,21 +512,21 @@ const Reader: React.FC<ReaderProps> = ({
 
     if (paragraph.trim().startsWith('# ')) {
       return (
-        <h1 key={index} className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6 mt-4">
+        <h1 key={index} className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-8 mt-4">
           {paragraph.replace('# ', '')}
         </h1>
       );
     }
     if (paragraph.trim().startsWith('**')) {
       return (
-        <h2 key={index} className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4 mt-4">
+        <h2 key={index} className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-6 mt-4">
           {paragraph.replace(/\*\*/g, '')}
         </h2>
       );
     }
 
     return (
-      <p key={index} className="mb-3 leading-[3rem] text-lg text-gray-700 dark:text-gray-200 font-serif text-justify">
+      <p key={index} className="mb-6 leading-[2.75rem] tracking-wide text-lg text-gray-700 dark:text-gray-200 font-serif text-justify">
         {paragraph}
       </p>
     );
