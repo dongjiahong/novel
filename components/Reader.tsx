@@ -3,7 +3,7 @@ import { useDrag } from '@use-gesture/react';
 import { Chapter, Book, SyncStatus, SyncProgress } from '../types';
 import { AnnotatedWord } from './AnnotatedWord';
 import { useWordContext } from '../context/WordContext';
-import { lookupWord, normalizeWord, wordsMatch } from '../services/dictionaryService';
+import { normalizeWord, wordsMatch } from '../services/dictionaryService';
 import { Settings, RefreshCw, BookOpen, List, Plus, Trash2, GraduationCap, Palette } from 'lucide-react';
 import SettingsModal from './Settings';
 import Sidebar from './Sidebar';
@@ -13,6 +13,8 @@ import { READING_THEMES } from '../constants';
 import { ReadingTheme } from '../types';
 import { ThemeSwatch } from './ThemeSwatch';
 import { useReadingStatsTracker } from '../hooks/useReadingStatsTracker';
+import { useWordAnalysis } from '../hooks/useWordAnalysis';
+import { usePagination } from '../hooks/usePagination';
 
 interface ReaderProps {
   chapter: Chapter;
@@ -35,11 +37,6 @@ interface ReaderProps {
 }
 
 const BATCH_SIZE = 500; // 每批标注500个生词
-const HEADER_HEIGHT = 50; // 顶部标题栏高度
-const FOOTER_HEIGHT = 0; // 底部翻页按钮高度（已移除）
-const CONTENT_PADDING = 96; // 内容区域上下padding总和
-const BOTTOM_SAFE_SPACE = 80; // 底部预留空间，防止最后一行被截断
-const MOBILE_TOP_BAR_HEIGHT = 48; // 移动端顶部栏高度
 
 const Reader: React.FC<ReaderProps> = ({
   chapter,
@@ -72,7 +69,6 @@ const Reader: React.FC<ReaderProps> = ({
   
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageRanges, setPageRanges] = useState<{ start: number; end: number }[]>([{ start: 0, end: 0 }]);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -108,79 +104,8 @@ const Reader: React.FC<ReaderProps> = ({
     }
   };
 
-  // 词汇分析结果状态
-  const [wordAnalysis, setWordAnalysis] = useState<{
-    words: { word: string; isNewWord: boolean; index: number }[];
-    newWordIndices: number[];
-    totalNewWords: number;
-  }>({ words: [], newWordIndices: [], totalNewWords: 0 });
-
-  // 异步提取章节中的所有单词并标记生词位置
-  useEffect(() => {
-    let cancelled = false;
-
-    const analyzeWords = async () => {
-      const words: { word: string; isNewWord: boolean; index: number }[] = [];
-      let wordIndex = 0;
-      const newWordIndices: number[] = [];
-      const newWordsFoundInList = new Set<string>();
-
-      // 简单的单词提取（与 processText 逻辑一致）
-      const paragraphs = chapter.content.split('\n');
-
-      for (const paragraph of paragraphs) {
-        if (!paragraph.trim()) continue;
-        if (paragraph.trim().startsWith('#') || paragraph.trim().startsWith('**')) continue;
-
-        const tokens = paragraph.split(/([a-zA-Z''-]+)/g);
-
-        for (const token of tokens) {
-          if (/[a-zA-Z]/.test(token)) {
-            const cleanWord = normalizeWord(token);
-            const isKnown = cleanWord ? checkIsKnown(cleanWord) : true;
-            const useLarge = dictionarySize === 'large';
-            const entry = cleanWord ? await lookupWord(cleanWord, useLarge) : null;
-            const hasEntry = entry !== null;
-
-            // 检查是否在生词表中（使用词形匹配）
-            let inNewWordsList = false;
-            if (cleanWord) {
-              for (const nw of newWords) {
-                if (await wordsMatch(cleanWord, nw.word)) {
-                  inNewWordsList = true;
-                  break;
-                }
-              }
-            }
-
-            // 如果单词在生词表中，或者是未掌握且词典中有的单词，则标记为生词
-            const isNewWord = (inNewWordsList || !isKnown) && hasEntry;
-
-            words.push({ word: token, isNewWord, index: wordIndex });
-
-            if (isNewWord) {
-              newWordIndices.push(wordIndex);
-              if (inNewWordsList && cleanWord) {
-                newWordsFoundInList.add(cleanWord);
-              }
-            }
-
-            wordIndex++;
-          }
-        }
-      }
-
-      if (!cancelled) {
-        setWordAnalysis({ words, newWordIndices, totalNewWords: newWordIndices.length });
-      }
-    };
-
-    analyzeWords();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [chapter.content, checkIsKnown, newWords, dictionarySize]);
+  // 词汇分析
+  const wordAnalysis = useWordAnalysis(chapter.content, checkIsKnown, newWords, dictionarySize);
 
   // 创建一个 Set 来快速查找哪些单词应该被标注
   const [shouldAnnotateSet, setShouldAnnotateSet] = useState<Set<number>>(new Set());
@@ -230,53 +155,8 @@ const Reader: React.FC<ReaderProps> = ({
   }, [chapter.content]);
 
   // 根据实际内容高度动态计算分页
-  useEffect(() => {
-    const calculatePages = () => {
-      if (!measureRef.current || paragraphs.length === 0) return;
+  const { pageRanges } = usePagination(paragraphs, measureRef);
 
-      const windowHeight = window.innerHeight;
-      const isMobile = window.innerWidth < 768; // md breakpoint
-      const extraHeight = isMobile ? MOBILE_TOP_BAR_HEIGHT : 0;
-      const availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING - BOTTOM_SAFE_SPACE - extraHeight;
-
-      // 测量每个段落的实际高度
-      const paragraphElements = measureRef.current.children;
-      const ranges: { start: number; end: number }[] = [];
-      let currentHeight = 0;
-      let pageStart = 0;
-
-      for (let i = 0; i < paragraphElements.length; i++) {
-        const element = paragraphElements[i] as HTMLElement;
-        const elementHeight = element.offsetHeight;
-
-        // 如果加上当前段落会超过可用高度，且当前页已有内容，则开始新页
-        if (currentHeight + elementHeight > availableHeight && i > pageStart) {
-          ranges.push({ start: pageStart, end: i });
-          pageStart = i;
-          currentHeight = elementHeight;
-        } else {
-          currentHeight += elementHeight;
-        }
-      }
-
-      // 添加最后一页
-      if (pageStart < paragraphs.length) {
-        ranges.push({ start: pageStart, end: paragraphs.length });
-      }
-
-      setPageRanges(ranges.length > 0 ? ranges : [{ start: 0, end: paragraphs.length }]);
-    };
-
-    // 需要等待测量容器渲染完成
-    const timer = setTimeout(calculatePages, 100);
-
-    // 监听窗口大小变化
-    window.addEventListener('resize', calculatePages);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', calculatePages);
-    };
-  }, [paragraphs]);
 
   // 根据段落索引计算并设置初始页码
   useEffect(() => {

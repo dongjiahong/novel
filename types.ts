@@ -78,6 +78,11 @@ export interface SyncProgress {
   message: string; // 当前步骤的描述信息
 }
 
+/**
+ * 脏数据标记类型
+ */
+export type SyncFileType = 'config' | 'booksMeta' | 'newWords' | 'readingProgress' | 'readingStats';
+
 // 阅读进度
 export interface ReadingProgress {
   bookId: string;
