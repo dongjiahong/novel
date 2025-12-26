@@ -1,5 +1,6 @@
 import { webdavService } from './webdavService';
 import { storageService } from './storageService';
+import { mergeReadingStats } from '../utils/statisticsUtils';
 import {
   Book,
   BookMetadata,
@@ -10,6 +11,8 @@ import {
   NewWordsMetadata,
   ReadingProgress,
   ReadingProgressData,
+  ReadingStatsData,
+  DailyReadingStat,
   SyncMetadata,
   UserConfig,
   SyncData, // 旧数据结构，用于迁移
@@ -28,6 +31,7 @@ const BOOKS_META_PATH = '/novel-reader/books-meta.json';
 const NEW_WORDS_META_PATH = '/novel-reader/new-words-meta.json'; // 生词表元数据
 const NEW_WORDS_DIR = '/novel-reader/new-words'; // 生词表分页文件目录
 const READING_PROGRESS_PATH = '/novel-reader/reading-progress.json';
+const READING_STATS_PATH = '/novel-reader/reading-stats.json';
 const SYNC_METADATA_PATH = '/novel-reader/sync-metadata.json';
 const BOOKS_DIR = '/novel-reader/books';
 
@@ -40,11 +44,10 @@ const OLD_SYNC_DATA_PATH = '/novel-reader/data.json';
 /**
  * 脏数据标记类型
  */
-type SyncFileType = 'config' | 'booksMeta' | 'newWords' | 'readingProgress';
+type SyncFileType = 'config' | 'booksMeta' | 'newWords' | 'readingProgress' | 'readingStats';
 
 /**
  * 脏数据追踪管理器
- * 用于标记本地数据的变更状态，实现增量同步
  */
 class SyncDirtyFlags {
   private flags: Record<SyncFileType, boolean>;
@@ -70,6 +73,7 @@ class SyncDirtyFlags {
       booksMeta: false,
       newWords: false,
       readingProgress: false,
+      readingStats: false,
     };
   }
 
@@ -112,6 +116,7 @@ class SyncDirtyFlags {
       booksMeta: false,
       newWords: false,
       readingProgress: false,
+      readingStats: false,
     };
     this.save();
   }
@@ -243,7 +248,7 @@ class SyncService {
   /**
    * 获取或生成设备ID
    */
-  private getDeviceId(): string {
+  public getDeviceId(): string {
     let deviceId = localStorage.getItem(DEVICE_ID_KEY);
     if (!deviceId) {
       deviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
@@ -904,6 +909,66 @@ class SyncService {
     console.log('📢 已触发阅读进度更新事件');
   }
 
+  // ============ 阅读统计同步 ============
+
+  /**
+   * 收集本地阅读统计数据
+   */
+  async collectLocalReadingStats(): Promise<ReadingStatsData> {
+    const allStats = await storageService.loadAllReadingStats();
+    const statsMap: Record<string, DailyReadingStat> = {};
+    
+    allStats.forEach(stat => {
+      statsMap[stat.date] = stat;
+    });
+
+    return {
+      stats: statsMap,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * 上传阅读统计数据
+   */
+  async uploadReadingStats(statsData: ReadingStatsData): Promise<void> {
+    const json = JSON.stringify(statsData, null, 2);
+    await webdavService.uploadFile(READING_STATS_PATH, json);
+  }
+
+  /**
+   * 下载阅读统计数据
+   */
+  async downloadReadingStats(): Promise<ReadingStatsData | null> {
+    try {
+      const exists = await webdavService.fileExists(READING_STATS_PATH);
+      if (!exists) return null;
+
+      const content = await webdavService.downloadFile(READING_STATS_PATH);
+      return JSON.parse(this.decodeContent(content)) as ReadingStatsData;
+    } catch (error) {
+      console.error('下载阅读统计失败:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 保存阅读统计到本地
+   */
+  async saveReadingStatsToLocal(statsData: ReadingStatsData): Promise<void> {
+    const statsArray = Object.values(statsData.stats);
+    for (const stat of statsArray) {
+      await storageService.saveReadingStat(stat);
+    }
+    
+    // 记录同步时间戳以供增量同步使用
+    localStorage.setItem('reading_stats_updated_at', statsData.updatedAt);
+    
+    // 触发自定义事件通知统计数据已更新
+    window.dispatchEvent(new CustomEvent('sync-stats-updated'));
+    console.log('📢 已触发阅读统计更新事件');
+  }
+
   /**
    * 保存书籍元数据到本地
    */
@@ -979,6 +1044,10 @@ class SyncService {
             return new Date(0).toISOString();
           }
         }
+        case 'readingStats': {
+          const timestamp = localStorage.getItem('reading_stats_updated_at');
+          return timestamp || new Date(0).toISOString();
+        }
         default:
           return new Date(0).toISOString();
       }
@@ -1029,9 +1098,10 @@ class SyncService {
       let mergedConfig: UserConfig;
       let mergedBooksMeta: BooksMetaData;
       let mergedProgress: ReadingProgressData;
+      let mergedStats: ReadingStatsData;
 
       let currentStep = 0;
-      const totalSteps = 5;
+      const totalSteps = 6;
 
       // 1. 优先同步阅读进度（如果需要）
       const localProgress = await this.collectLocalReadingProgress();
@@ -1063,7 +1133,37 @@ class SyncService {
         mergedProgress = localProgress;
       }
 
-      // 2. 同步用户配置（如果需要）
+      // 2. 同步阅读统计（如果需要）
+      const localStats = await this.collectLocalReadingStats();
+      const localStatsTimestamp = this.getLocalTimestamp('readingStats');
+      const needSyncStats = this.shouldSyncFile(
+        'readingStats',
+        localStatsTimestamp,
+        remoteSyncMeta?.fileTimestamps?.readingStats
+      );
+
+      if (needSyncStats) {
+        currentStep++;
+        console.log('同步阅读统计...');
+        onProgress?.({
+          currentStep: 'complete', // 借用 complete 步骤或者自定义，暂时放在这里
+          totalSteps,
+          currentStepIndex: currentStep,
+          message: '同步阅读统计',
+        } as any);
+        const remoteStats = await this.downloadReadingStats();
+        mergedStats = remoteStats
+          ? mergeReadingStats(localStats, remoteStats)
+          : localStats;
+        await this.saveReadingStatsToLocal(mergedStats);
+        await this.uploadReadingStats(mergedStats);
+        syncDirtyFlags.clear('readingStats');
+      } else {
+        console.log('跳过阅读统计同步（无变更）');
+        mergedStats = localStats;
+      }
+
+      // 3. 同步用户配置（如果需要）
       const localConfig = await this.collectLocalConfig();
       const localConfigTimestamp = this.getLocalTimestamp('config');
       const needSyncConfig = this.shouldSyncFile(
@@ -1093,7 +1193,7 @@ class SyncService {
         mergedConfig = localConfig;
       }
 
-      // 3. 同步书籍元数据（如果需要）
+      // 4. 同步书籍元数据（如果需要）
       const localBooksMeta = await this.collectLocalBooksMeta(localBooks);
       const localBooksMetaTimestamp = this.getLocalTimestamp('booksMeta');
       const needSyncBooksMeta = this.shouldSyncFile(
@@ -1123,7 +1223,7 @@ class SyncService {
         mergedBooksMeta = localBooksMeta;
       }
 
-      // 4. 同步生词表（分页版本）
+      // 5. 同步生词表（分页版本）
       currentStep++;
       console.log('同步生词表（分页）...');
       onProgress?.({
@@ -1139,7 +1239,7 @@ class SyncService {
 
       syncDirtyFlags.clear('newWords');
 
-      // 5. 同步书籍文件（只上传本地有但远程没有的书籍）
+      // 6. 同步书籍文件（只上传本地有但远程没有的书籍）
       if (bookFiles.size > 0) {
         currentStep++;
         console.log('同步书籍文件...');
@@ -1164,7 +1264,7 @@ class SyncService {
         console.log('跳过书籍文件同步（无新书籍）');
       }
 
-      // 6. 更新同步元数据
+      // 7. 更新同步元数据
       const newWordsMeta = await this.downloadNewWordsMeta();
       const metadata: SyncMetadata = {
         lastSyncAt: new Date().toISOString(),
@@ -1174,6 +1274,7 @@ class SyncService {
           booksMeta: mergedBooksMeta.updatedAt,
           newWords: newWordsMeta?.updatedAt || new Date().toISOString(),
           readingProgress: mergedProgress.updatedAt,
+          readingStats: mergedStats.updatedAt,
         },
       };
       await webdavService.uploadFile(SYNC_METADATA_PATH, JSON.stringify(metadata, null, 2));

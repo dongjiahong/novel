@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { READING_THEMES } from '../constants';
 import { ReadingTheme } from '../types';
 import { ThemeSwatch } from './ThemeSwatch';
+import { useReadingStatsTracker } from '../hooks/useReadingStatsTracker';
 
 interface ReaderProps {
   chapter: Chapter;
@@ -62,6 +63,12 @@ const Reader: React.FC<ReaderProps> = ({
   const { checkIsKnown, newWords, dictionarySize } = useWordContext();
   const { readingTheme, setReadingTheme } = useTheme();
   const currentTheme = READING_THEMES[readingTheme];
+  
+  // 检查是否有活动书籍
+  const hasActiveBook = bookId && bookId !== '';
+
+  // 启用阅读时长统计
+  useReadingStatsTracker(hasActiveBook);
   
   const [annotatedNewWordsCount, setAnnotatedNewWordsCount] = useState(BATCH_SIZE);
   const [currentPage, setCurrentPage] = useState(0);
@@ -531,9 +538,6 @@ const Reader: React.FC<ReaderProps> = ({
       </p>
     );
   };
-
-  // 检查是否有活动书籍
-  const hasActiveBook = bookId && bookId !== '';
 
   return (
     <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-white dark:bg-gray-900 relative flex">

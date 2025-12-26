@@ -1,13 +1,14 @@
-import { Book, NewWord } from '../types';
+import { Book, NewWord, DailyReadingStat } from '../types';
 
 // IndexedDB 数据库名称和版本
 const DB_NAME = 'NovelReaderDB';
-const DB_VERSION = 3; // 升级版本以添加 known words 和 excluded words
+const DB_VERSION = 4; // 升级版本以添加 reading stats
 const BOOKS_STORE = 'books';
 const FILES_STORE = 'book_files';
 const NEW_WORDS_STORE = 'new_words';
 const KNOWN_WORDS_STORE = 'known_words';
 const EXCLUDED_WORDS_STORE = 'excluded_words';
+const READING_STATS_STORE = 'reading_stats';
 
 class StorageService {
   private db: IDBDatabase | null = null;
@@ -71,6 +72,12 @@ class StorageService {
         if (!db.objectStoreNames.contains(EXCLUDED_WORDS_STORE)) {
           db.createObjectStore(EXCLUDED_WORDS_STORE);
           console.log('创建排除单词对象存储');
+        }
+
+        // 创建阅读统计存储
+        if (!db.objectStoreNames.contains(READING_STATS_STORE)) {
+          db.createObjectStore(READING_STATS_STORE, { keyPath: 'date' });
+          console.log('创建阅读统计对象存储');
         }
       };
     });
@@ -641,6 +648,104 @@ class StorageService {
       });
     } catch (error) {
       console.error('删除排除单词失败:', error);
+      throw error;
+    }
+  }
+
+  // ============ 阅读统计操作 ============
+
+  async saveReadingStat(stat: DailyReadingStat): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([READING_STATS_STORE], 'readwrite');
+      const store = transaction.objectStore(READING_STATS_STORE);
+      store.put(stat);
+
+      return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } catch (error) {
+      console.error('保存阅读统计失败:', error);
+      throw error;
+    }
+  }
+
+  async loadReadingStat(date: string): Promise<DailyReadingStat | null> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([READING_STATS_STORE], 'readonly');
+      const store = transaction.objectStore(READING_STATS_STORE);
+      const request = store.get(date);
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('加载阅读统计失败:', error);
+      return null;
+    }
+  }
+
+  async loadAllReadingStats(): Promise<DailyReadingStat[]> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([READING_STATS_STORE], 'readonly');
+      const store = transaction.objectStore(READING_STATS_STORE);
+      const request = store.getAll();
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('加载所有阅读统计失败:', error);
+      return [];
+    }
+  }
+
+  async updateDailyReadingDuration(date: string, seconds: number, deviceId: string): Promise<void> {
+    try {
+      await this.init();
+      if (!this.db) throw new Error('数据库未初始化');
+
+      const transaction = this.db.transaction([READING_STATS_STORE], 'readwrite');
+      const store = transaction.objectStore(READING_STATS_STORE);
+      
+      const request = store.get(date);
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+          const existingStat: DailyReadingStat = request.result || {
+            date,
+            totalDuration: 0,
+            deviceStats: {}
+          };
+          
+          // Update device specific duration
+          const currentDeviceDuration = existingStat.deviceStats[deviceId] || 0;
+          existingStat.deviceStats[deviceId] = currentDeviceDuration + seconds;
+          
+          // Re-calculate total duration
+          existingStat.totalDuration = Object.values(existingStat.deviceStats).reduce((a, b) => a + b, 0);
+          
+          const putRequest = store.put(existingStat);
+          
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = () => reject(putRequest.error);
+        };
+        
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('更新每日阅读时长失败:', error);
       throw error;
     }
   }

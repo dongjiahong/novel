@@ -25,6 +25,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "fake-indexeddb": "^6.2.5",
     "http-proxy-middleware": "^3.0.5",
     "jsdom": "^27.3.0",
     "typescript": "~5.8.2",

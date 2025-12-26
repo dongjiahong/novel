@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useWordContext } from '../context/WordContext';
 import { useTheme } from '../context/ThemeContext';
-import { X, Download, BookOpen, CheckCircle, Cloud, RefreshCw, Loader2, Check, Sun, Moon, Settings2, Book, Globe, Palette } from 'lucide-react';
+import { X, Download, BookOpen, CheckCircle, Cloud, RefreshCw, Loader2, Check, Sun, Moon, Settings2, Book, Globe, Palette, BarChart2 } from 'lucide-react';
 import { webdavService } from '../services/webdavService';
-import { WebDAVConfig, SyncStatus, SyncProgress } from '../types';
+import { WebDAVConfig, SyncStatus, SyncProgress, NewWord } from '../types';
+import StatisticsTab from './StatisticsTab';
 
 interface SettingsProps {
   onClose: () => void;
@@ -26,7 +27,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
 
   const { themeMode, setThemeMode } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'webdav'>('vocabulary');
+  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'stats' | 'webdav'>('vocabulary');
 
   // WebDAV 配置状态
   const [webdavConfig, setWebdavConfig] = useState<WebDAVConfig>({
@@ -93,21 +94,23 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
 
   // 按书籍分组生词
   const newWordsByBook = React.useMemo(() => {
-    const grouped: { [bookTitle: string]: typeof newWords } = {};
+    const grouped: Record<string, typeof newWords> = {};
     newWords.forEach(word => {
-      if (!grouped[word.bookTitle]) {
-        grouped[word.bookTitle] = [];
+      const bookTitle = word.bookTitle || '未分类';
+      if (!grouped[bookTitle]) {
+        grouped[bookTitle] = [];
       }
-      grouped[word.bookTitle].push(word);
+      grouped[bookTitle].push(word);
     });
     return grouped;
   }, [newWords]);
 
-  const tabs = [
+  const tabs: { id: string; label: string; icon: any; count?: number }[] = [
     { id: 'vocabulary', label: '词汇', icon: Book },
     { id: 'newwords', label: '生词本', icon: BookOpen, count: newWords.length },
+    { id: 'stats', label: '统计', icon: BarChart2 },
     { id: 'webdav', label: '同步', icon: Cloud },
-  ] as const;
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md transition-opacity duration-300">
@@ -236,6 +239,11 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
             </div>
           )}
 
+          {/* 统计信息 */}
+          {activeTab === 'stats' && (
+            <StatisticsTab />
+          )}
+
           {/* 生词表 */}
           {activeTab === 'newwords' && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -268,7 +276,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                 </div>
               ) : (
                 <div className="space-y-4 sm:space-y-6">
-                  {Object.entries(newWordsByBook).map(([bookTitle, words]) => (
+                  {(Object.entries(newWordsByBook) as [string, NewWord[]][]).map(([bookTitle, words]) => (
                     <div key={bookTitle} className="group bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                       <div className="px-3 py-2.5 sm:px-4 sm:py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                         <div className="flex items-center gap-2">

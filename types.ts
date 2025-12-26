@@ -157,7 +157,31 @@ export interface SyncMetadata {
     booksMeta?: string;
     newWords?: string; // 生词表元数据的更新时间
     readingProgress?: string;
+    readingStats?: string; // 阅读统计数据的更新时间
   };
+}
+
+// ============ 阅读统计数据结构 ============
+
+export interface DailyReadingStat {
+  date: string; // YYYY-MM-DD
+  totalDuration: number; // 当日总时长 (seconds) - 这是一个衍生值，等于 deviceStats 之和
+  deviceStats: Record<string, number>; // key: deviceId, value: duration (seconds)
+}
+
+export interface ReadingStatsData {
+  stats: Record<string, DailyReadingStat>; // Key: YYYY-MM-DD
+  updatedAt: string; // ISO timestamp
+}
+
+// 统计总览数据（用于UI展示）
+export interface ReadingStatsSummary {
+  todayDuration: number;
+  totalDuration: number;
+  totalDays: number;
+  currentStreak: number; // 连续阅读天数
+  weeklyStats: { date: string; duration: number }[]; // 最近7天
+  monthlyStats: { month: string; duration: number }[]; // 最近12个月
 }
 
 // ============ 旧的同步数据结构（保留以便迁移）============

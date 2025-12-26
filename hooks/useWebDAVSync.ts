@@ -151,6 +151,21 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
   }, [autoSyncEnabled, performSync]);
 
   /**
+   * 监听同步请求事件
+   */
+  useEffect(() => {
+    const handleSyncNeeded = () => {
+      console.log('🔄 收到同步请求事件，准备执行自动同步');
+      autoSync();
+    };
+
+    window.addEventListener('sync-needed', handleSyncNeeded);
+    return () => {
+      window.removeEventListener('sync-needed', handleSyncNeeded);
+    };
+  }, [autoSync]);
+
+  /**
    * 清理定时器
    */
   useEffect(() => {

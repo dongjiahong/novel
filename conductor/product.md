@@ -20,6 +20,7 @@ A smart English e-book reader for learners, featuring vocabulary leveling, autom
 - **Integrated Dual Dictionary:** Offers a fast, lightweight dictionary for common words and a comprehensive large dictionary for advanced terms, both available offline once loaded.
 - **Smart Vocabulary Management:** Enables users to mark words as "known" or "unknown," building a persistent personal vocabulary list.
 - **WebDAV Synchronization:** Uses the user's own cloud storage to sync e-books, reading progress, and settings, ensuring data ownership and privacy.
+- **Reading Statistics:** Automatically tracks reading time with inactivity detection, providing daily, weekly, monthly, and yearly insights into learning progress.
 - **Multi-Format Support:** Robust support for EPUB and TXT formats with intelligent pagination and navigation.
 
 ## Success Metrics
