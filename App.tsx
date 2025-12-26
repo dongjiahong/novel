@@ -158,11 +158,10 @@ function AppContent() {
   }, [books, bookFiles, activeBookId, activeChapterId, getProgress]);
 
   // WebDAV 同步 hook
-  const { syncStatus, syncProgress, lastSyncTime, syncError, manualSync, autoSync, isConfigured } = useWebDAVSync({
+  const { syncStatus, syncProgress, lastSyncTime, syncError, manualSync, isConfigured, autoSyncEnabled } = useWebDAVSync({
     books,
     bookFiles,
     onSyncComplete: handleSyncComplete,
-    autoSyncEnabled: true,
   });
 
   const activeBook = books.find(b => b.id === activeBookId);
@@ -289,11 +288,11 @@ function AppContent() {
 
   // 应用启动时执行同步（只执行一次）
   useEffect(() => {
-    if (!isInitialLoad && !hasInitialSyncRef.current) {
+    if (!isInitialLoad && !hasInitialSyncRef.current && autoSyncEnabled) {
       hasInitialSyncRef.current = true;
       manualSync();
     }
-  }, [isInitialLoad, manualSync]);
+  }, [isInitialLoad, manualSync, autoSyncEnabled]);
 
   // 当阅读进度有更晚的时间戳时（同步后），自动聚焦到对应的书籍与章节
   useEffect(() => {

@@ -7,7 +7,6 @@ interface UseWebDAVSyncOptions {
   books: Book[];
   bookFiles: Map<string, string>;
   onSyncComplete?: (booksMeta: BooksMetaData) => void;
-  autoSyncEnabled?: boolean;
 }
 
 /**
@@ -15,13 +14,14 @@ interface UseWebDAVSyncOptions {
  * 提供手动同步、自动同步、状态管理等功能
  */
 export function useWebDAVSync(options: UseWebDAVSyncOptions) {
-  const { books, bookFiles, onSyncComplete, autoSyncEnabled = true } = options;
+  const { books, bookFiles, onSyncComplete } = options;
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(webdavService.isConfigured());
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(webdavService.getConfig()?.autoSync ?? false);
 
   // 防抖定时器
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -33,7 +33,9 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
   useEffect(() => {
     const checkConfig = () => {
       const configured = webdavService.isConfigured();
+      const config = webdavService.getConfig();
       setIsConfigured(configured);
+      setAutoSyncEnabled(config?.autoSync ?? false);
     };
 
     // 初始检查
@@ -132,38 +134,24 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
   }, [performSync]);
 
   /**
-   * 自动同步（带防抖）
+   * 自动同步定时器（5分钟间隔）
    */
-  const autoSync = useCallback(() => {
+  useEffect(() => {
     if (!autoSyncEnabled) {
       return;
     }
 
-    // 清除之前的定时器
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // 设置新的定时器（3秒后执行同步）
-    debounceTimerRef.current = setTimeout(() => {
+    console.log('启动自动同步定时器（间隔 5 分钟）');
+    const intervalId = setInterval(() => {
+      console.log('⏰ 触发自动同步');
       performSync();
-    }, 3000);
-  }, [autoSyncEnabled, performSync]);
+    }, 5 * 60 * 1000); // 5分钟
 
-  /**
-   * 监听同步请求事件
-   */
-  useEffect(() => {
-    const handleSyncNeeded = () => {
-      console.log('🔄 收到同步请求事件，准备执行自动同步');
-      autoSync();
-    };
-
-    window.addEventListener('sync-needed', handleSyncNeeded);
     return () => {
-      window.removeEventListener('sync-needed', handleSyncNeeded);
+      console.log('清除自动同步定时器');
+      clearInterval(intervalId);
     };
-  }, [autoSync]);
+  }, [autoSyncEnabled, performSync]);
 
   /**
    * 清理定时器
@@ -194,8 +182,8 @@ export function useWebDAVSync(options: UseWebDAVSyncOptions) {
     lastSyncTime,
     syncError,
     manualSync,
-    autoSync,
     testConnection,
     isConfigured,
+    autoSyncEnabled,
   };
 }

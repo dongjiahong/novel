@@ -34,7 +34,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
     url: '',
     username: '',
     password: '',
-    autoSync: true,
+    autoSync: false,
   });
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
