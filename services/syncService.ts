@@ -40,6 +40,43 @@ export { syncDirtyFlags };
 export { localNewWordsPageTimestamps } from './sync/LocalNewWordsPageTimestamps';
 
 /**
+ * 并发控制工具函数
+ * 限制同时执行的 Promise 数量
+ */
+async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number
+): Promise<T[]> {
+  const results: T[] = [];
+  const executing: Promise<void>[] = [];
+
+  for (const task of tasks) {
+    const p = Promise.resolve().then(() => task()).then(result => {
+      results.push(result);
+    });
+
+    executing.push(p);
+
+    if (executing.length >= concurrency) {
+      await Promise.race(executing);
+      // 移除已完成的 Promise
+      for (let i = executing.length - 1; i >= 0; i--) {
+        const status = await Promise.race([
+          executing[i].then(() => 'fulfilled'),
+          Promise.resolve('pending')
+        ]);
+        if (status === 'fulfilled') {
+          executing.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  await Promise.all(executing);
+  return results;
+}
+
+/**
  * 同步服务类 - 重构版
  * 提供分离式数据同步、智能合并等功能
  */
@@ -220,146 +257,160 @@ class SyncService {
       let mergedProgress: ReadingProgressData;
       let mergedStats: ReadingStatsData;
 
+      const totalSteps = 4; // 并发后步骤减少
       let currentStep = 0;
-      const totalSteps = 6;
 
-      // 1. 优先同步阅读进度（如果需要）
-      const localProgress = await readingProgressSync.collectLocalReadingProgress();
+      // ========== 第一批并发：阅读进度、阅读统计、用户配置 ==========
+      currentStep++;
+      console.log('并发同步: 阅读进度、阅读统计、用户配置...');
+      onProgress?.({
+        currentStep: 'reading-progress',
+        totalSteps,
+        currentStepIndex: currentStep,
+        message: '同步阅读进度、统计、配置',
+      });
+
+      // 收集本地数据（可并发）
+      const [localProgress, localStats, localConfig] = await Promise.all([
+        readingProgressSync.collectLocalReadingProgress(),
+        readingStatsSync.collectLocalReadingStats(),
+        configSync.collectLocalConfig(),
+      ]);
+
+      // 定义第一批同步任务
+      const batch1Tasks: (() => Promise<void>)[] = [];
+
+      // 阅读进度同步任务
       const localProgressTimestamp = this.getLocalTimestamp('readingProgress');
       const needSyncProgress = this.shouldSyncFile(
         'readingProgress',
         localProgressTimestamp,
         remoteSyncMeta?.fileTimestamps?.readingProgress
       );
-
       if (needSyncProgress) {
-        currentStep++;
-        console.log('同步阅读进度（优先）...');
-        onProgress?.({
-          currentStep: 'reading-progress',
-          totalSteps,
-          currentStepIndex: currentStep,
-          message: '同步阅读进度',
+        batch1Tasks.push(async () => {
+          console.log('  ↳ 同步阅读进度...');
+          const remoteProgress = await readingProgressSync.downloadReadingProgress();
+          mergedProgress = remoteProgress
+            ? readingProgressSync.mergeReadingProgress(localProgress, remoteProgress)
+            : localProgress;
+          readingProgressSync.saveReadingProgressToLocal(mergedProgress);
+          await readingProgressSync.uploadReadingProgress(mergedProgress);
+          syncDirtyFlags.clear('readingProgress');
+          console.log('  ✓ 阅读进度同步完成');
         });
-        const remoteProgress = await readingProgressSync.downloadReadingProgress();
-        mergedProgress = remoteProgress
-          ? readingProgressSync.mergeReadingProgress(localProgress, remoteProgress)
-          : localProgress;
-        readingProgressSync.saveReadingProgressToLocal(mergedProgress);
-        await readingProgressSync.uploadReadingProgress(mergedProgress);
-        syncDirtyFlags.clear('readingProgress');
       } else {
-        console.log('跳过阅读进度同步（无变更）');
         mergedProgress = localProgress;
+        console.log('  ⊘ 跳过阅读进度同步（无变更）');
       }
 
-      // 2. 同步阅读统计（如果需要）
-      const localStats = await readingStatsSync.collectLocalReadingStats();
+      // 阅读统计同步任务
       const localStatsTimestamp = this.getLocalTimestamp('readingStats');
       const needSyncStats = this.shouldSyncFile(
         'readingStats',
         localStatsTimestamp,
         remoteSyncMeta?.fileTimestamps?.readingStats
       );
-
       if (needSyncStats) {
-        currentStep++;
-        console.log('同步阅读统计...');
-        onProgress?.({
-          currentStep: 'complete', // 借用 complete 步骤或者自定义，暂时放在这里
-          totalSteps,
-          currentStepIndex: currentStep,
-          message: '同步阅读统计',
-        } as any);
-        const remoteStats = await readingStatsSync.downloadReadingStats();
-        mergedStats = remoteStats
-          ? mergeReadingStats(localStats, remoteStats)
-          : localStats;
-        await readingStatsSync.saveReadingStatsToLocal(mergedStats);
-        await readingStatsSync.uploadReadingStats(mergedStats);
-        syncDirtyFlags.clear('readingStats');
+        batch1Tasks.push(async () => {
+          console.log('  ↳ 同步阅读统计...');
+          const remoteStats = await readingStatsSync.downloadReadingStats();
+          mergedStats = remoteStats
+            ? mergeReadingStats(localStats, remoteStats)
+            : localStats;
+          await readingStatsSync.saveReadingStatsToLocal(mergedStats);
+          await readingStatsSync.uploadReadingStats(mergedStats);
+          syncDirtyFlags.clear('readingStats');
+          console.log('  ✓ 阅读统计同步完成');
+        });
       } else {
-        console.log('跳过阅读统计同步（无变更）');
         mergedStats = localStats;
+        console.log('  ⊘ 跳过阅读统计同步（无变更）');
       }
 
-      // 3. 同步用户配置（如果需要）
-      const localConfig = await configSync.collectLocalConfig();
+      // 用户配置同步任务
       const localConfigTimestamp = this.getLocalTimestamp('config');
       const needSyncConfig = this.shouldSyncFile(
         'config',
         localConfigTimestamp,
         remoteSyncMeta?.fileTimestamps?.config
       );
-
       if (needSyncConfig) {
-        currentStep++;
-        console.log('同步用户配置...');
-        onProgress?.({
-          currentStep: 'config',
-          totalSteps,
-          currentStepIndex: currentStep,
-          message: '同步配置',
+        batch1Tasks.push(async () => {
+          console.log('  ↳ 同步用户配置...');
+          const remoteConfig = await configSync.downloadConfig();
+          mergedConfig = remoteConfig
+            ? configSync.mergeConfig(localConfig, remoteConfig)
+            : localConfig;
+          await configSync.saveConfigToLocal(mergedConfig);
+          await configSync.uploadConfig(mergedConfig);
+          syncDirtyFlags.clear('config');
+          console.log('  ✓ 用户配置同步完成');
         });
-        const remoteConfig = await configSync.downloadConfig();
-        mergedConfig = remoteConfig
-          ? configSync.mergeConfig(localConfig, remoteConfig)
-          : localConfig;
-        await configSync.saveConfigToLocal(mergedConfig);
-        await configSync.uploadConfig(mergedConfig);
-        syncDirtyFlags.clear('config');
       } else {
-        console.log('跳过用户配置同步（无变更）');
         mergedConfig = localConfig;
+        console.log('  ⊘ 跳过用户配置同步（无变更）');
       }
 
-      // 4. 同步书籍元数据（如果需要）
+      // 执行第一批并发任务（最多3个并发）
+      if (batch1Tasks.length > 0) {
+        await runWithConcurrency(batch1Tasks, 3);
+      }
+
+      // ========== 第二批并发：书籍元数据、生词表 ==========
+      currentStep++;
+      console.log('并发同步: 书籍元数据、生词表...');
+      onProgress?.({
+        currentStep: 'books-meta',
+        totalSteps,
+        currentStepIndex: currentStep,
+        message: '同步书籍列表、生词表',
+      });
+
+      // 收集本地书籍元数据
       const localBooksMeta = await booksMetaSync.collectLocalBooksMeta(localBooks);
+
+      // 定义第二批同步任务
+      const batch2Tasks: (() => Promise<void>)[] = [];
+
+      // 书籍元数据同步任务
       const localBooksMetaTimestamp = this.getLocalTimestamp('booksMeta');
       const needSyncBooksMeta = this.shouldSyncFile(
         'booksMeta',
         localBooksMetaTimestamp,
         remoteSyncMeta?.fileTimestamps?.booksMeta
       );
-
       if (needSyncBooksMeta) {
-        currentStep++;
-        console.log('同步书籍元数据...');
-        onProgress?.({
-          currentStep: 'books-meta',
-          totalSteps,
-          currentStepIndex: currentStep,
-          message: '同步书籍列表',
+        batch2Tasks.push(async () => {
+          console.log('  ↳ 同步书籍元数据...');
+          const remoteBooksMeta = await booksMetaSync.downloadBooksMeta();
+          mergedBooksMeta = remoteBooksMeta
+            ? booksMetaSync.mergeBooksMeta(localBooksMeta, remoteBooksMeta)
+            : localBooksMeta;
+          booksMetaSync.saveBooksMetaToLocal(mergedBooksMeta);
+          await booksMetaSync.uploadBooksMeta(mergedBooksMeta);
+          syncDirtyFlags.clear('booksMeta');
+          console.log('  ✓ 书籍元数据同步完成');
         });
-        const remoteBooksMeta = await booksMetaSync.downloadBooksMeta();
-        mergedBooksMeta = remoteBooksMeta
-          ? booksMetaSync.mergeBooksMeta(localBooksMeta, remoteBooksMeta)
-          : localBooksMeta;
-        booksMetaSync.saveBooksMetaToLocal(mergedBooksMeta);
-        await booksMetaSync.uploadBooksMeta(mergedBooksMeta);
-        syncDirtyFlags.clear('booksMeta');
       } else {
-        console.log('跳过书籍元数据同步（无变更）');
         mergedBooksMeta = localBooksMeta;
+        console.log('  ⊘ 跳过书籍元数据同步（无变更）');
       }
 
-      // 5. 同步生词表（分页版本）
-      currentStep++;
-      console.log('同步生词表（分页）...');
-      onProgress?.({
-        currentStep: 'new-words',
-        totalSteps,
-        currentStepIndex: currentStep,
-        message: '同步生词表',
+      // 生词表同步任务
+      batch2Tasks.push(async () => {
+        console.log('  ↳ 同步生词表...');
+        await newWordsSync.syncNewWords((current, total) => {
+          // 可以在这里更新进度，但为了简化先不显示子进度
+        });
+        syncDirtyFlags.clear('newWords');
+        console.log('  ✓ 生词表同步完成');
       });
 
-      await newWordsSync.syncNewWords((current, total) => {
-        // 可以在这里更新进度，但为了简化先不显示子进度
-      });
+      // 执行第二批并发任务（最多3个并发）
+      await runWithConcurrency(batch2Tasks, 3);
 
-      syncDirtyFlags.clear('newWords');
-
-      // 6. 同步书籍文件（只上传本地有但远程没有的书籍）
+      // ========== 顺序执行：书籍文件同步 ==========
       if (bookFiles.size > 0) {
         currentStep++;
         console.log('同步书籍文件...');
@@ -369,16 +420,24 @@ class SyncService {
           currentStepIndex: currentStep,
           message: '同步书籍文件',
         });
+        
+        // 书籍文件也可以并发上传（最多3个）
+        const bookUploadTasks: (() => Promise<void>)[] = [];
         for (const [bookId, fileContent] of bookFiles.entries()) {
           const book = localBooks.find(b => b.id === bookId);
           if (book) {
-            const extension = book.title.endsWith('.epub') ? '.epub' : '.txt';
-            const exists = await webdavService.fileExists(`${BOOKS_DIR}/${bookId}${extension}`);
-            if (!exists) {
-              console.log(`上传书籍: ${book.title}`);
-              await bookFileSync.uploadBook(book, fileContent);
-            }
+            bookUploadTasks.push(async () => {
+              const extension = book.title.endsWith('.epub') ? '.epub' : '.txt';
+              const exists = await webdavService.fileExists(`${BOOKS_DIR}/${bookId}${extension}`);
+              if (!exists) {
+                console.log(`  ↳ 上传书籍: ${book.title}`);
+                await bookFileSync.uploadBook(book, fileContent);
+              }
+            });
           }
+        }
+        if (bookUploadTasks.length > 0) {
+          await runWithConcurrency(bookUploadTasks, 3);
         }
       } else {
         console.log('跳过书籍文件同步（无新书籍）');
