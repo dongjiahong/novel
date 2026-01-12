@@ -497,7 +497,7 @@ function AppContent() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white dark:bg-gray-800 relative">
+    <div className="flex h-screen w-full bg-background relative">
 
       {/* Global Modal for Words */}
       <WordModal />
@@ -506,8 +506,8 @@ function AppContent() {
       {isParsing && (
         <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
-            <Loader2 className="animate-spin text-blue-600 mb-3" size={32} />
-            <span className="text-gray-700 font-medium">正在解析图书内容...</span>
+            <Loader2 className="animate-spin text-indigo-600 mb-3" size={32} />
+            <span className="text-slate-700 font-medium">正在解析图书内容...</span>
           </div>
         </div>
       )}

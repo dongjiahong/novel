@@ -7,9 +7,21 @@
     <title>only reading</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // 配置 Tailwind CSS 启用 dark mode
+      // 配置 Tailwind CSS 启用 dark mode 和自定义主题颜色
       tailwind.config = {
-        darkMode: 'class'
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              background: 'var(--bg-background)',
+              surface: 'var(--bg-surface)',
+              surface2: 'var(--bg-surface-2)',
+              foreground: 'var(--text-foreground)',
+              muted: 'var(--text-muted)',
+              border: 'var(--border-color)',
+            }
+          }
+        }
       }
     </script>
     <style>
@@ -17,37 +29,52 @@
 
       /* 主题颜色变量 */
       :root {
-        --bg-primary: #ffffff;
-        --bg-secondary: #f9fafb;
-        --bg-tertiary: #f3f4f6;
-        --text-primary: #111827;
-        --text-secondary: #6b7280;
-        --text-tertiary: #9ca3af;
-        --border-primary: #e5e7eb;
-        --border-secondary: #d1d5db;
+        /* Light Theme (Default) */
+        --bg-background: #ffffff;
+        --bg-surface: #ffffff;
+        --bg-surface-2: #f8fafc; /* slate-50 */
+        --text-foreground: #0f172a; /* slate-900 */
+        --text-muted: #64748b; /* slate-500 */
+        --border-color: #e2e8f0; /* slate-200 */
+        
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
         --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
       }
 
-      .dark {
-        --bg-primary: #1f2937;
-        --bg-secondary: #111827;
-        --bg-tertiary: #374151;
-        --text-primary: #f9fafb;
-        --text-secondary: #d1d5db;
-        --text-tertiary: #9ca3af;
-        --border-primary: #374151;
-        --border-secondary: #4b5563;
-        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+      /* Dark Theme */
+      .dark, .theme-dark {
+        --bg-background: #020617; /* slate-950 */
+        --bg-surface: #0f172a; /* slate-900 */
+        --bg-surface-2: #1e293b; /* slate-800 */
+        --text-foreground: #f8fafc; /* slate-50 */
+        --text-muted: #94a3b8; /* slate-400 */
+        --border-color: #1e293b; /* slate-800 */
+      }
+
+      /* Solarized Light Theme */
+      .theme-solarized-light {
+        --bg-background: #fdf6e3; /* base3 */
+        --bg-surface: #eee8d5; /* base2 */
+        --bg-surface-2: #e6e0cc; /* Slightly darker than base2 */
+        --text-foreground: #657b83; /* base00 */
+        --text-muted: #93a1a1; /* base1 */
+        --border-color: #d3d0c8; /* Custom border for solarized */
+      }
+
+      /* Solarized Dark Theme */
+      .theme-solarized-dark {
+        --bg-background: #002b36; /* base03 */
+        --bg-surface: #073642; /* base02 */
+        --bg-surface-2: #094654; /* Slightly lighter than base02 */
+        --text-foreground: #839496; /* base0 */
+        --text-muted: #586e75; /* base01 */
+        --border-color: #0f3a4e; /* Custom border */
       }
 
       body {
         font-family: 'Inter', sans-serif;
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
+        background-color: var(--bg-background);
+        color: var(--text-foreground);
         transition: background-color 0.3s ease, color 0.3s ease;
       }
 

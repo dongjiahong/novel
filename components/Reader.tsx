@@ -6,7 +6,7 @@ import { useWordContext } from '../context/WordContext';
 import { normalizeWord, wordsMatch } from '../services/dictionaryService';
 import { Settings, RefreshCw, BookOpen, List, Plus, Trash2, GraduationCap, Palette } from 'lucide-react';
 import SettingsModal from './Settings';
-import Sidebar from './Sidebar';
+import ModernSidebar from './ModernSidebar';
 import { VocabularyModal } from './VocabularyModal';
 import { useTheme } from '../context/ThemeContext';
 import { READING_THEMES } from '../constants';
@@ -399,31 +399,31 @@ const Reader: React.FC<ReaderProps> = ({
 
     if (paragraph.trim().startsWith('# ')) {
       return (
-        <h1 key={index} className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-8 mt-4">
+        <h1 key={index} className="text-2xl font-bold text-foreground mb-8 mt-4">
           {paragraph.replace('# ', '')}
         </h1>
       );
     }
     if (paragraph.trim().startsWith('**')) {
       return (
-        <h2 key={index} className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-6 mt-4">
+        <h2 key={index} className="text-lg font-bold text-foreground mb-6 mt-4">
           {paragraph.replace(/\*\*/g, '')}
         </h2>
       );
     }
 
     return (
-      <p key={index} className="mb-6 leading-[2.75rem] tracking-wide text-lg text-gray-700 dark:text-gray-200 font-serif text-justify">
+      <p key={index} className="mb-6 leading-[2.75rem] tracking-wide text-lg text-foreground font-serif text-justify">
         {paragraph}
       </p>
     );
   };
 
   return (
-    <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-white dark:bg-gray-900 relative flex">
+    <div ref={contentRef} className="flex-1 h-full overflow-hidden bg-background relative flex">
       {/* 桌面端侧边栏 - 只在 md 以上屏幕显示 */}
-      <div className="hidden md:flex h-full">
-        <Sidebar
+      <div className="hidden md:flex h-full border-r border-border">
+        <ModernSidebar
           books={books}
           activeBookId={bookId}
           activeChapterId={activeChapterId}
@@ -453,16 +453,16 @@ const Reader: React.FC<ReaderProps> = ({
 
         {/* 顶部标题栏 - 移动端显示下拉菜单，桌面端只显示信息和操作按钮 */}
         {hasActiveBook && (
-          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center shadow-sm flex-shrink-0">
+          <div className="bg-surface border-b border-border px-4 py-3 flex items-center shadow-sm flex-shrink-0 z-10">
             {/* 移动端：图书选择按钮 - 只在 md 以下屏幕显示 */}
             <div className="relative md:hidden">
               <button
                 onClick={() => setShowBookMenu(!showBookMenu)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-surface2 rounded-lg transition-colors"
                 title="选择图书"
               >
-                <BookOpen size={16} />
-                <span className="hidden sm:inline max-w-[150px] truncate">{bookTitle}</span>
+                <BookOpen size={18} />
+                <span className="hidden sm:inline max-w-[120px] truncate font-medium">{bookTitle}</span>
               </button>
 
               {/* 图书菜单 */}
@@ -472,11 +472,11 @@ const Reader: React.FC<ReaderProps> = ({
                     className="fixed inset-0 z-40"
                     onClick={() => setShowBookMenu(false)}
                   />
-                  <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto">
-                    <div className="p-2">
+                  <div className="absolute top-full left-0 mt-2 w-72 bg-surface rounded-xl shadow-xl border border-border z-50 max-h-[60vh] overflow-y-auto">
+                    <div className="p-2 sticky top-0 bg-surface border-b border-border z-10">
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
                       >
                         <Plus size={16} />
                         <span>添加图书</span>
@@ -489,20 +489,18 @@ const Reader: React.FC<ReaderProps> = ({
                         onChange={handleFileChange}
                       />
                     </div>
-                    <div className="border-t border-gray-200 dark:border-gray-700">
+                    <div className="p-1">
                       {books.map(book => (
                         <div
                           key={book.id}
-                          className={`group flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${bookId === book.id ? 'bg-blue-50 dark:bg-gray-700' : ''
-                            }`}
+                          className={`group flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg mb-0.5 ${bookId === book.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-surface2'}`}
                         >
                           <span
                             onClick={() => {
                               onSelectBook(book.id);
                               setShowBookMenu(false);
                             }}
-                            className={`flex-1 text-sm truncate ${bookId === book.id ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'
-                              }`}
+                            className={`flex-1 text-sm truncate ${bookId === book.id ? 'text-indigo-600 dark:text-indigo-400 font-medium' : 'text-foreground'}`}
                             title={book.title}
                           >
                             {book.title}
@@ -515,7 +513,7 @@ const Reader: React.FC<ReaderProps> = ({
                                 setShowBookMenu(false);
                               }
                             }}
-                            className="ml-2 p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="ml-2 p-1.5 text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
                             title="删除图书"
                           >
                             <Trash2 size={14} />
@@ -532,11 +530,11 @@ const Reader: React.FC<ReaderProps> = ({
             <div className="relative ml-2 md:hidden">
               <button
                 onClick={() => setShowChapterMenu(!showChapterMenu)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-surface2 rounded-lg transition-colors"
                 title="选择章节"
               >
-                <List size={16} />
-                <span className="hidden sm:inline max-w-[150px] truncate">{chapter.title}</span>
+                <List size={18} />
+                <span className="hidden sm:inline max-w-[120px] truncate">{chapter.title}</span>
               </button>
 
               {/* 章节菜单 */}
@@ -546,7 +544,8 @@ const Reader: React.FC<ReaderProps> = ({
                     className="fixed inset-0 z-40"
                     onClick={() => setShowChapterMenu(false)}
                   />
-                  <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto">
+                  <div className="absolute top-full left-0 mt-2 w-72 bg-surface rounded-xl shadow-xl border border-border z-50 max-h-[60vh] overflow-y-auto">
+                    <div className="p-1">
                     {chapters.map(ch => (
                       <div
                         key={ch.id}
@@ -554,13 +553,13 @@ const Reader: React.FC<ReaderProps> = ({
                           onSelectChapter(ch.id);
                           setShowChapterMenu(false);
                         }}
-                        className={`px-4 py-2 cursor-pointer text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${activeChapterId === ch.id ? 'bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'
-                          }`}
+                        className={`px-4 py-2.5 cursor-pointer text-sm rounded-lg mb-0.5 ${activeChapterId === ch.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-medium' : 'text-foreground hover:bg-surface2'}`}
                         title={ch.title}
                       >
                         {ch.title}
                       </div>
                     ))}
+                    </div>
                   </div>
                 </>
               )}
@@ -570,10 +569,10 @@ const Reader: React.FC<ReaderProps> = ({
             <div className="relative ml-2 md:hidden">
               <button
                 onClick={() => setShowThemeMenu(!showThemeMenu)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                className="flex items-center justify-center p-2 text-foreground hover:bg-surface2 rounded-lg transition-colors"
                 title="选择主题"
               >
-                <Palette size={16} />
+                <Palette size={18} />
               </button>
 
               {/* 主题菜单 */}
@@ -583,7 +582,7 @@ const Reader: React.FC<ReaderProps> = ({
                     className="fixed inset-0 z-40"
                     onClick={() => setShowThemeMenu(false)}
                   />
-                  <div className="absolute top-full left-0 mt-1 p-3 flex gap-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                  <div className="absolute top-full left-0 mt-2 p-3 flex gap-3 bg-surface rounded-xl shadow-xl border border-border z-50">
                     {(['light', 'dark', 'solarized-light', 'solarized-dark'] as ReadingTheme[]).map((t) => (
                       <ThemeSwatch
                         key={t}
@@ -601,33 +600,33 @@ const Reader: React.FC<ReaderProps> = ({
             </div>
 
             {/* 桌面端：当前书籍和章节标题 - 只在 md 以上屏幕显示 */}
-            <div className="hidden md:flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <BookOpen size={16} className="text-gray-400 dark:text-gray-500" />
+            <div className="hidden md:flex items-center gap-2 text-sm text-muted">
+              <BookOpen size={16} className="text-muted" />
               <span className="font-medium max-w-[200px] truncate">{bookTitle}</span>
-              <span className="text-gray-400 dark:text-gray-500">/</span>
+              <span className="text-muted">/</span>
               <span className="max-w-[250px] truncate">{chapter.title}</span>
             </div>
 
             {/* 生词统计 */}
             {wordAnalysis.totalNewWords > 0 && (
-              <span className="ml-2 text-xs text-orange-500 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 px-2 py-1 rounded hidden lg:inline">
+              <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-full font-medium hidden lg:inline-flex items-center">
                 {Math.min(annotatedNewWordsCount, wordAnalysis.totalNewWords)} /{' '}
                 {wordAnalysis.totalNewWords} 生词
               </span>
             )}
 
             {/* 页码显示 */}
-            <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 mr-2">
-              {currentPage + 1}/{totalPages}
+            <span className="ml-auto text-xs font-mono text-muted mr-2 bg-surface2 px-2 py-1 rounded">
+              {currentPage + 1} / {totalPages}
             </span>
 
             {/* 右侧：同步、生词本和设置按钮 - 只在移动端显示，桌面端在侧边栏 */}
-            <div className="flex items-center gap-1 md:hidden">
+            <div className="flex items-center gap-1 md:hidden ml-auto">
               <button
                 onClick={handleSyncClick}
-                className={`p-2 transition-colors rounded-md ${syncStatus === 'syncing'
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                className={`p-2 transition-colors rounded-lg ${syncStatus === 'syncing'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
+                  : 'text-muted hover:bg-surface2'
                   }`}
                 title="同步"
                 disabled={syncStatus === 'syncing'}
@@ -637,20 +636,19 @@ const Reader: React.FC<ReaderProps> = ({
 
               <button
                 onClick={() => setShowVocabulary(true)}
-                className="relative p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors"
+                className="relative p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
                 title="生词本"
               >
                 <GraduationCap size={18} />
                 {unstudiedCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
-                    {unstudiedCount > 99 ? '99' : unstudiedCount}
+                  <span className="absolute top-1 right-1 bg-red-500 border border-white dark:border-slate-900 text-white text-[9px] font-bold rounded-full w-2.5 h-2.5 flex items-center justify-center">
                   </span>
                 )}
               </button>
 
               <button
                 onClick={() => setShowSettings(true)}
-                className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                className="p-2 text-muted hover:bg-surface2 rounded-lg transition-colors"
                 title="设置"
               >
                 <Settings size={18} />
@@ -661,10 +659,10 @@ const Reader: React.FC<ReaderProps> = ({
 
         {/* 移动端：无书籍时的顶部栏 */}
         {!hasActiveBook && (
-          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between shadow-sm flex-shrink-0 md:hidden">
+          <div className="bg-surface border-b border-border px-4 py-2 flex items-center justify-between shadow-sm flex-shrink-0 md:hidden">
             <div className="flex items-center gap-2">
               <img src="/logo.svg" alt="Logo" className="w-6 h-6" />
-              <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">E-Book Lingo Reader</span>
+              <span className="text-sm text-foreground font-medium">E-Book Lingo Reader</span>
             </div>
 
             <div className="flex items-center gap-1">
@@ -680,7 +678,7 @@ const Reader: React.FC<ReaderProps> = ({
                 onClick={handleSyncClick}
                 className={`p-2 transition-colors rounded-md ${syncStatus === 'syncing'
                   ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'text-muted hover:bg-surface2'
                   }`}
                 title="同步"
                 disabled={syncStatus === 'syncing'}
@@ -690,7 +688,7 @@ const Reader: React.FC<ReaderProps> = ({
 
               <button
                 onClick={() => setShowSettings(true)}
-                className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                className="p-2 text-muted hover:bg-surface2 rounded-md transition-colors"
                 title="设置"
               >
                 <Settings size={18} />
@@ -731,14 +729,14 @@ const Reader: React.FC<ReaderProps> = ({
           </div>
         ) : (
           /* 无书籍时的欢迎页面 */
-          <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-col gap-4 px-4" style={{ backgroundColor: currentTheme.background }}>
-            <BookOpen size={64} className="text-gray-300 dark:text-gray-600" />
-            <p className="text-lg text-gray-500 dark:text-gray-400 text-center">欢迎使用 E-Book Lingo Reader</p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center max-w-md">
+          <div className="flex-1 flex items-center justify-center text-muted flex-col gap-4 px-4" style={{ backgroundColor: currentTheme.background }}>
+            <BookOpen size={64} className="text-muted/50" />
+            <p className="text-lg text-muted text-center">欢迎使用 E-Book Lingo Reader</p>
+            <p className="text-sm text-muted text-center max-w-md">
               点击左侧侧边栏的 <Plus size={14} className="inline" /> 按钮上传 EPUB 或 TXT 文件开始阅读，或使用 <RefreshCw size={14} className="inline" /> 按钮从 WebDAV 同步书籍
             </p>
             {/* 移动端提示 */}
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center max-w-md md:hidden">
+            <p className="text-sm text-muted text-center max-w-md md:hidden">
               点击右上角的 <Plus size={14} className="inline" /> 按钮上传图书，或使用 <RefreshCw size={14} className="inline" /> 按钮同步书籍
             </p>
           </div>

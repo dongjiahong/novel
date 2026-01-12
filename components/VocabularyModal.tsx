@@ -132,19 +132,19 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col ring-1 ring-white/10"
+        className="bg-surface rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col ring-1 ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 flex justify-between items-center z-10">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-surface border-b border-border flex justify-between items-center z-10">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
               <BookOpen size={18} className="sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight">生词本</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">生词本</h2>
               <div className="flex gap-2 sm:gap-3 mt-1">
-                <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 sm:px-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 sm:px-2 rounded-full bg-background border border-border text-muted">
                   总计 {newWords.length}
                 </span>
                 <span className="text-[10px] sm:text-xs font-medium px-1.5 py-0.5 sm:px-2 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
@@ -158,21 +158,21 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all duration-200"
+            className="p-1.5 sm:p-2 text-muted hover:text-foreground hover:bg-surface2 rounded-full transition-all duration-200"
           >
             <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-gray-50/50 dark:bg-black/20">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-background">
           {wordsToStudy.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16 sm:py-20 text-center">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white dark:bg-gray-800 rounded-full shadow-sm flex items-center justify-center mb-4 sm:mb-6">
-                <BrainCircuit className="text-gray-300 dark:text-gray-600 w-10 h-10 sm:w-12 sm:h-12" />
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-surface rounded-full shadow-sm flex items-center justify-center mb-4 sm:mb-6">
+                <BrainCircuit className="text-muted w-10 h-10 sm:w-12 sm:h-12" />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2">暂无生词需要学习</h3>
-              <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xs">
+              <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2">暂无生词需要学习</h3>
+              <p className="text-sm sm:text-base text-muted max-w-xs">
                 太棒了！你已经完成了所有生词的学习，快去阅读新的文章积累更多词汇吧。
               </p>
             </div>
@@ -201,7 +201,7 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
             <div className="text-center py-6 sm:py-8">
               <button
                 onClick={() => setDisplayCount(prev => prev + 20)}
-                className="px-5 py-2 sm:px-6 sm:py-2.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs sm:text-sm font-medium rounded-full border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-600 dark:hover:text-orange-400 transition-all shadow-sm"
+                className="px-5 py-2 sm:px-6 sm:py-2.5 bg-surface text-muted text-xs sm:text-sm font-medium rounded-full border border-border hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-600 dark:hover:text-orange-400 transition-all shadow-sm"
               >
                 加载更多生词
               </button>
@@ -210,10 +210,10 @@ export const VocabularyModal: React.FC<VocabularyModalProps> = ({ isOpen, onClos
         </div>
 
         {/* Footer */}
-        <div className="bg-white dark:bg-gray-900 px-4 py-2.5 sm:px-6 sm:py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+        <div className="bg-surface px-4 py-2.5 sm:px-6 sm:py-3 border-t border-border flex items-center justify-center text-[10px] sm:text-xs text-muted">
           <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
             <span className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
               点击卡片显示释义
             </span>
             <span className="flex items-center gap-1.5">
@@ -265,11 +265,11 @@ const WordCard: React.FC<WordCardProps> = ({
   return (
     <div
       className={`
-        group relative bg-white dark:bg-gray-800 rounded-xl border transition-all duration-300 animate-in fade-in slide-in-from-bottom-2
+        group relative bg-surface rounded-xl border transition-all duration-300 animate-in fade-in slide-in-from-bottom-2
         ${isPressing ? 'scale-[0.98] ring-2 ring-green-500/50 border-green-500/50' : 'hover:shadow-lg hover:-translate-y-0.5'}
         ${wordData.isMarkedDifficult
           ? 'border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-900/10'
-          : 'border-gray-200 dark:border-gray-700'
+          : 'border-border'
         }
       `}
       style={style}
@@ -279,12 +279,12 @@ const WordCard: React.FC<WordCardProps> = ({
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-3 mb-1"> {/* flex-wrap to handle overflow on small screens */}
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
+            <h3 className="text-lg sm:text-xl font-bold text-foreground truncate">
               {wordData.word}
             </h3>
             {wordData.phonetic && (
               <div className="flex items-center gap-1 sm:gap-2"> {/* This div contains phonetic and pronunciation buttons */}
-                <span className="text-xs sm:text-sm font-mono text-gray-500 dark:text-gray-400">
+                <span className="text-xs sm:text-sm font-mono text-muted">
                   {wordData.phonetic}
                 </span>
                 <button
@@ -319,11 +319,11 @@ const WordCard: React.FC<WordCardProps> = ({
             {/* Translation & Click to reveal hint */}
             <div className="min-h-[1.5rem] sm:min-h-[1.75rem] flex items-center">
               {isRevealed ? (
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium animate-in fade-in duration-200">
+                <p className="text-xs sm:text-sm text-foreground font-medium animate-in fade-in duration-200">
                   {wordData.translation || '暂无翻译'}
                 </p>
               ) : (
-                <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500 font-medium animate-in fade-in duration-200">
+                <div className="flex items-center gap-1 text-muted font-medium animate-in fade-in duration-200">
                   <EyeOff size={12} className="sm:w-[14px] sm:h-[14px]" />
                   <span className="text-[10px] sm:text-xs">点击显示释义</span>
                 </div>
@@ -336,12 +336,12 @@ const WordCard: React.FC<WordCardProps> = ({
               {isSentenceExpanded ? (
                 <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="flex items-start gap-1.5">
-                    <div className="flex-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic leading-relaxed border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+                    <div className="flex-1 text-xs sm:text-sm text-muted italic leading-relaxed border-l-2 border-border pl-2">
                       {wordData.sentence}
                     </div>
                     <button
                       onClick={onToggleSentence}
-                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                      className="p-1 text-muted hover:text-foreground rounded hover:bg-surface2"
                       title="收起例句"
                     >
                       <ChevronUp size={14} className="sm:w-4 sm:h-4" />
@@ -364,7 +364,7 @@ const WordCard: React.FC<WordCardProps> = ({
 
         {/* Right Action Column */}
 
-        <div className="flex flex-col items-center justify-center gap-2 border-l border-gray-100 dark:border-gray-700 pl-3 sm:pl-4 py-1">
+        <div className="flex flex-col items-center justify-center gap-2 border-l border-border pl-3 sm:pl-4 py-1">
 
           {/* Mastery Button */}
 
@@ -390,7 +390,7 @@ const WordCard: React.FC<WordCardProps> = ({
 
                   ? 'border-green-500 bg-green-50 dark:bg-green-900/20 scale-110'
 
-                  : 'border-gray-200 dark:border-gray-600 text-gray-300 dark:text-gray-600 hover:border-green-400 hover:text-green-400'
+                  : 'border-border text-muted hover:border-green-400 hover:text-green-400'
 
                 }
 

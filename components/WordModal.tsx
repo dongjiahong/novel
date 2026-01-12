@@ -74,10 +74,10 @@ export const WordModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 px-6 py-4 border-b border-blue-100 dark:border-gray-700 flex justify-between items-start">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 px-6 py-4 border-b border-blue-100 dark:border-slate-700 flex justify-between items-start">
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h3 className="text-2xl font-serif font-bold text-blue-900 dark:text-blue-100">{word}</h3>
@@ -121,20 +121,20 @@ export const WordModal: React.FC = () => {
         {/* Content */}
         <div className="px-6 py-6">
           <div className="mb-6">
-            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
               释义 / Definition
             </span>
-            <p className="text-gray-800 dark:text-gray-100 text-base mt-2 leading-relaxed">
+            <p className="text-slate-800 dark:text-slate-100 text-base mt-2 leading-relaxed">
               {entry.translation || entry.definition || '暂无解释'}
             </p>
           </div>
 
           {sentence && (
             <div className="mb-6">
-              <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 例句 / Example
               </span>
-              <p className="text-gray-600 dark:text-gray-300 text-sm mt-2 leading-relaxed italic border-l-2 border-blue-300 dark:border-blue-500 pl-3">
+              <p className="text-slate-600 dark:text-slate-300 text-sm mt-2 leading-relaxed italic border-l-2 border-blue-300 dark:border-blue-500 pl-3">
                 {sentence}
               </p>
             </div>
@@ -201,7 +201,7 @@ export const WordModal: React.FC = () => {
 
               <button
                 onClick={handleClose}
-                className="flex-1 py-2.5 px-4 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 px-4 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
               >
                 <XCircle size={16} />
                 关闭

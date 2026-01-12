@@ -65,35 +65,35 @@ const StatisticsTab: React.FC = () => {
           <div className="text-2xl font-bold">{formatDuration(summary.todayDuration)}</div>
         </div>
         
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-2 text-gray-500 dark:text-gray-400">
+        <div className="bg-surface p-4 rounded-2xl border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-2 text-muted">
             <TrendingUp size={16} />
             <span className="text-xs font-medium">累计时长</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatDuration(summary.totalDuration)}</div>
+          <div className="text-2xl font-bold text-foreground">{formatDuration(summary.totalDuration)}</div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-1 text-gray-500 dark:text-gray-400">
+        <div className="bg-surface p-4 rounded-2xl border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-1 text-muted">
             <Calendar size={16} />
             <span className="text-xs font-medium">总天数</span>
           </div>
-          <div className="text-xl font-bold text-gray-900 dark:text-white">{summary.totalDays} 天</div>
+          <div className="text-xl font-bold text-foreground">{summary.totalDays} 天</div>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-1 text-gray-500 dark:text-gray-400">
+        <div className="bg-surface p-4 rounded-2xl border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-1 text-muted">
             <BarChart2 size={16} />
             <span className="text-xs font-medium">连续阅读</span>
           </div>
-          <div className="text-xl font-bold text-gray-900 dark:text-white">{summary.currentStreak} 天</div>
+          <div className="text-xl font-bold text-foreground">{summary.currentStreak} 天</div>
         </div>
       </div>
 
       {/* 最近7天趋势图 */}
-      <section className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-6">最近 7 天</h3>
+      <section className="bg-surface p-4 sm:p-6 rounded-2xl border border-border shadow-sm">
+        <h3 className="text-sm font-semibold text-foreground mb-6">最近 7 天</h3>
         <div className="flex items-end justify-between h-32 gap-2">
           {summary.weeklyStats.map((stat, idx) => {
             const height = (stat.duration / maxWeeklyDuration) * 100;
@@ -107,11 +107,11 @@ const StatisticsTab: React.FC = () => {
                   style={{ height: `${Math.max(height, 5)}%` }}
                 >
                   {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                     {formatDuration(stat.duration)}
                   </div>
                 </div>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase">{dayLabel}</span>
+                <span className="text-[10px] text-muted uppercase">{dayLabel}</span>
               </div>
             );
           })}
@@ -119,31 +119,31 @@ const StatisticsTab: React.FC = () => {
       </section>
 
       {/* 阅读时长统计 */}
-      <section className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">详情统计</h3>
+      <section className="bg-surface p-4 sm:p-6 rounded-2xl border border-border shadow-sm">
+        <h3 className="text-sm font-semibold text-foreground mb-4">详情统计</h3>
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400">今日阅读</span>
-            <span className="font-medium text-gray-900 dark:text-white">{formatDuration(summary.todayDuration)}</span>
+            <span className="text-muted">今日阅读</span>
+            <span className="font-medium text-foreground">{formatDuration(summary.todayDuration)}</span>
           </div>
-          <div className="h-px bg-gray-100 dark:bg-gray-700" />
+          <div className="h-px bg-border" />
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400">本周总计</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-muted">本周总计</span>
+            <span className="font-medium text-foreground">
               {formatDuration(summary.weeklyStats.reduce((a, b) => a + b.duration, 0))}
             </span>
           </div>
-          <div className="h-px bg-gray-100 dark:bg-gray-700" />
+          <div className="h-px bg-border" />
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400">本月总计</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-muted">本月总计</span>
+            <span className="font-medium text-foreground">
               {formatDuration(summary.monthlyStats[summary.monthlyStats.length - 1].duration)}
             </span>
           </div>
-          <div className="h-px bg-gray-100 dark:bg-gray-700" />
+          <div className="h-px bg-border" />
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400">本年总计</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-muted">本年总计</span>
+            <span className="font-medium text-foreground">
               {formatDuration(summary.monthlyStats.reduce((a, b) => a + b.duration, 0))}
             </span>
           </div>
