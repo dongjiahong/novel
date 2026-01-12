@@ -27,7 +27,6 @@ export const useWordAnalysis = (
       const words: { word: string; isNewWord: boolean; index: number }[] = [];
       let wordIndex = 0;
       const newWordIndices: number[] = [];
-      // const newWordsFoundInList = new Set<string>(); // unused?
 
       // 简单的单词提取（与 processText 逻辑一致）
       const paragraphs = content.split('\n');
@@ -64,9 +63,6 @@ export const useWordAnalysis = (
 
             if (isNewWord) {
               newWordIndices.push(wordIndex);
-              // if (inNewWordsList && cleanWord) {
-              //   newWordsFoundInList.add(cleanWord);
-              // }
             }
 
             wordIndex++;

@@ -552,47 +552,25 @@ function AppContent() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {activeBookId && activeBook ? (
-          <Reader
-            chapter={currentChapter}
-            bookId={activeBook.id}
-            bookTitle={activeBook.title}
-            chapterIndex={currentChapterIndex >= 0 ? currentChapterIndex : 0}
-            onSaveProgress={handleSaveProgress}
-            initialParagraphIndex={initialParagraphIndex}
-            books={books}
-            chapters={currentBookChapters}
-            activeChapterId={activeChapterId}
-            onSelectBook={handleSelectBook}
-            onSelectChapter={handleSelectChapter}
-            onAddBook={handleAddBook}
-            onDeleteBook={handleDeleteBook}
-            syncStatus={syncStatus}
-            syncProgress={syncProgress}
-            onManualSync={manualSync}
-            isWebDAVConfigured={isConfigured}
-          />
-        ) : (
-          <Reader
-            chapter={currentChapter}
-            bookId={''}
-            bookTitle={''}
-            chapterIndex={0}
-            onSaveProgress={handleSaveProgress}
-            initialParagraphIndex={0}
-            books={books}
-            chapters={[]}
-            activeChapterId={''}
-            onSelectBook={handleSelectBook}
-            onSelectChapter={handleSelectChapter}
-            onAddBook={handleAddBook}
-            onDeleteBook={handleDeleteBook}
-            syncStatus={syncStatus}
-            syncProgress={syncProgress}
-            onManualSync={manualSync}
-            isWebDAVConfigured={isConfigured}
-          />
-        )}
+        <Reader
+          chapter={currentChapter}
+          bookId={activeBook?.id ?? ''}
+          bookTitle={activeBook?.title ?? ''}
+          chapterIndex={currentChapterIndex >= 0 ? currentChapterIndex : 0}
+          onSaveProgress={handleSaveProgress}
+          initialParagraphIndex={activeBook ? initialParagraphIndex : 0}
+          books={books}
+          chapters={activeBook ? currentBookChapters : []}
+          activeChapterId={activeBook ? activeChapterId : ''}
+          onSelectBook={handleSelectBook}
+          onSelectChapter={handleSelectChapter}
+          onAddBook={handleAddBook}
+          onDeleteBook={handleDeleteBook}
+          syncStatus={syncStatus}
+          syncProgress={syncProgress}
+          onManualSync={manualSync}
+          isWebDAVConfigured={isConfigured}
+        />
       </div>
     </div>
   );

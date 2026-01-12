@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useWordContext } from '../context/WordContext';
 import { lookupWord, normalizeWord } from '../services/dictionaryService';
 import { DictionaryEntry } from '../types';
@@ -10,6 +10,33 @@ interface AnnotatedWordProps {
   paragraph?: string; // 单词所在的段落，用于提取例句
 }
 
+// 公共样式常量
+const INTERACTIVE_STYLE = {
+  WebkitUserSelect: 'none' as const,
+  WebkitTouchCallout: 'none' as const,
+  touchAction: 'manipulation' as const,
+};
+
+// 从段落中提取包含该单词的句子
+function extractSentence(para: string, targetWord: string): string {
+  if (!para || !targetWord) return '';
+
+  const sentences = para.split(/([.!?]+\s+)/);
+
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i];
+    const wordRegex = new RegExp(`\\b${targetWord}\\b`, 'i');
+    if (wordRegex.test(sentence)) {
+      const punctuation = (i + 1 < sentences.length && /^[.!?]+\s*$/.test(sentences[i + 1]))
+        ? sentences[i + 1]
+        : '';
+      return (sentence + punctuation).trim();
+    }
+  }
+
+  return '';
+}
+
 export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   word,
   original,
@@ -18,7 +45,6 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 }) => {
   const { checkIsKnown, setInteractingWord, checkIsInNewWords, dictionarySize } = useWordContext();
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
-  const [loading, setLoading] = useState(true);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
   // 标准化单词
@@ -30,18 +56,15 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   // 异步加载词典数据
   useEffect(() => {
     if (!cleanWord || !isWordChar) {
-      setLoading(false);
       return;
     }
 
     let cancelled = false;
-
-    // 根据词典大小设置决定是否使用 large 词典
     const useLarge = dictionarySize === 'large';
+
     lookupWord(cleanWord, useLarge).then(result => {
       if (!cancelled) {
         setEntry(result);
-        setLoading(false);
       }
     });
 
@@ -49,71 +72,6 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
       cancelled = true;
     };
   }, [cleanWord, isWordChar, dictionarySize]);
-
-  // 从段落中提取包含该单词的句子
-  const extractSentence = (para: string, targetWord: string): string => {
-    if (!para || !targetWord) return '';
-
-    // 按句子分割（简单处理：按 . ! ? 分割）
-    const sentences = para.split(/([.!?]+\s+)/);
-    let fullSentence = '';
-
-    for (let i = 0; i < sentences.length; i++) {
-      const sentence = sentences[i];
-      // 检查句子是否包含目标单词（忽略大小写）
-      const wordRegex = new RegExp(`\\b${targetWord}\\b`, 'i');
-      if (wordRegex.test(sentence)) {
-        // 找到包含单词的句子，拼接完整句子（包括标点）
-        fullSentence = sentence;
-        if (i + 1 < sentences.length && /^[.!?]+\s*$/.test(sentences[i + 1])) {
-          fullSentence += sentences[i + 1];
-        }
-        break;
-      }
-    }
-
-    return fullSentence.trim();
-  };
-
-
-  // 长按开始
-  const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!entry || !isWordChar) return;
-
-    // 阻止事件冒泡，避免触发翻页
-    e.stopPropagation();
-    // 阻止默认行为，避免移动端触发系统选择菜单
-    e.preventDefault();
-
-    const timer = setTimeout(() => {
-      const sentence = extractSentence(paragraph, cleanWord);
-      setInteractingWord({ word: cleanWord, entry, sentence });
-    }, 500); // 长按 500ms 触发
-
-    setLongPressTimer(timer);
-  };
-
-  // 长按结束或取消
-  const handlePressEnd = (e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  };
-
-  // 移动端滑动时取消长按
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  };
-
-  // 阻止右键菜单
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-  };
 
   // 清理定时器
   useEffect(() => {
@@ -123,6 +81,44 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
       }
     };
   }, [longPressTimer]);
+
+  // 长按事件处理器（合并公共逻辑）
+  const pressHandlers = useMemo(() => {
+    const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
+      if (!entry || !isWordChar) return;
+      e.stopPropagation();
+      e.preventDefault();
+
+      const timer = setTimeout(() => {
+        const sentence = extractSentence(paragraph, cleanWord);
+        setInteractingWord({ word: cleanWord, entry, sentence });
+      }, 500);
+
+      setLongPressTimer(timer);
+    };
+
+    const clearTimer = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        setLongPressTimer(null);
+      }
+    };
+
+    const handlePressEnd = (e: React.MouseEvent | React.TouchEvent) => {
+      e.stopPropagation();
+      clearTimer();
+    };
+
+    return {
+      onMouseDown: handlePressStart,
+      onMouseUp: handlePressEnd,
+      onMouseLeave: handlePressEnd,
+      onTouchStart: handlePressStart,
+      onTouchMove: clearTimer,
+      onTouchEnd: handlePressEnd,
+      onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+    };
+  }, [entry, isWordChar, paragraph, cleanWord, setInteractingWord, longPressTimer]);
 
   // 1. 如果不是单词字符，直接渲染
   if (!isWordChar) {
@@ -139,18 +135,8 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
     return (
       <span
         className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-0.5 transition-colors select-none"
-        style={{
-          WebkitUserSelect: 'none',
-          WebkitTouchCallout: 'none',
-          touchAction: 'manipulation'
-        }}
-        onMouseDown={handlePressStart}
-        onMouseUp={handlePressEnd}
-        onMouseLeave={handlePressEnd}
-        onTouchStart={handlePressStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handlePressEnd}
-        onContextMenu={handleContextMenu}
+        style={INTERACTIVE_STYLE}
+        {...pressHandlers}
         title="长按查看详情"
       >
         {original}
@@ -160,22 +146,14 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 
   // 4. 如果是生词但不应该标注（性能优化），渲染为普通文本
   if (!shouldAnnotate) {
-    const hoverBgClass = isInNewWords ? 'hover:bg-primary-50 dark:hover:bg-primary-900/30' : 'hover:bg-orange-50 dark:hover:bg-orange-900/30';
+    const hoverBgClass = isInNewWords
+      ? 'hover:bg-primary-50 dark:hover:bg-primary-900/30'
+      : 'hover:bg-orange-50 dark:hover:bg-orange-900/30';
     return (
       <span
         className={`cursor-pointer ${hoverBgClass} rounded px-0.5 transition-colors select-none`}
-        style={{
-          WebkitUserSelect: 'none',
-          WebkitTouchCallout: 'none',
-          touchAction: 'manipulation'
-        }}
-        onMouseDown={handlePressStart}
-        onMouseUp={handlePressEnd}
-        onMouseLeave={handlePressEnd}
-        onTouchStart={handlePressStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handlePressEnd}
-        onContextMenu={handleContextMenu}
+        style={INTERACTIVE_STYLE}
+        {...pressHandlers}
       >
         {original}
       </span>
@@ -183,26 +161,18 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
   }
 
   // 5. 生词：显示完整标注（悬浮样式）
-  // 区分普通生词（橙色）和生词表中的生词（紫色）
-  const annotationColor = isInNewWords ? 'cyan' : 'orange';
-  const textColorClass = isInNewWords ? 'text-primary-600 dark:text-primary-400' : 'text-orange-600 dark:text-orange-400';
-  const hoverColorClass = isInNewWords ? 'hover:text-primary-700 dark:hover:text-primary-300' : 'hover:text-orange-700 dark:hover:text-orange-300';
+  const textColorClass = isInNewWords
+    ? 'text-primary-600 dark:text-primary-400'
+    : 'text-orange-600 dark:text-orange-400';
+  const hoverColorClass = isInNewWords
+    ? 'hover:text-primary-700 dark:hover:text-primary-300'
+    : 'hover:text-orange-700 dark:hover:text-orange-300';
 
   return (
     <span
       className="relative inline-block cursor-pointer group select-none"
-      style={{
-        WebkitUserSelect: 'none',
-        WebkitTouchCallout: 'none',
-        touchAction: 'manipulation'
-      }}
-      onMouseDown={handlePressStart}
-      onMouseUp={handlePressEnd}
-      onMouseLeave={handlePressEnd}
-      onTouchStart={handlePressStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handlePressEnd}
-      onContextMenu={handleContextMenu}
+      style={INTERACTIVE_STYLE}
+      {...pressHandlers}
       title={isInNewWords ? "生词表 - 长按查看详情" : "长按查看详情"}
     >
       {/* 中文翻译 - 绝对定位在单词上方 */}

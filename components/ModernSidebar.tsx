@@ -1,18 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { 
-  Settings, 
-  Plus, 
-  Trash2, 
-  BookOpen, 
-  RefreshCw, 
-  GraduationCap, 
-  Palette, 
-  Library, 
-  List, 
-  ChevronRight, 
-  ChevronDown,
-  Moon,
-  Sun
+import {
+  Settings,
+  Plus,
+  Trash2,
+  BookOpen,
+  RefreshCw,
+  GraduationCap,
+  Palette,
+  Library,
+  List
 } from 'lucide-react';
 import { Book, Chapter, SyncStatus, SyncProgress, ReadingTheme } from '../types';
 import SettingsModal from './Settings';

@@ -48,31 +48,13 @@ async function runWithConcurrency<T>(
   concurrency: number
 ): Promise<T[]> {
   const results: T[] = [];
-  const executing: Promise<void>[] = [];
 
-  for (const task of tasks) {
-    const p = Promise.resolve().then(() => task()).then(result => {
-      results.push(result);
-    });
-
-    executing.push(p);
-
-    if (executing.length >= concurrency) {
-      await Promise.race(executing);
-      // 移除已完成的 Promise
-      for (let i = executing.length - 1; i >= 0; i--) {
-        const status = await Promise.race([
-          executing[i].then(() => 'fulfilled'),
-          Promise.resolve('pending')
-        ]);
-        if (status === 'fulfilled') {
-          executing.splice(i, 1);
-        }
-      }
-    }
+  for (let i = 0; i < tasks.length; i += concurrency) {
+    const batch = tasks.slice(i, i + concurrency);
+    const batchResults = await Promise.all(batch.map(task => task()));
+    results.push(...batchResults);
   }
 
-  await Promise.all(executing);
   return results;
 }
 

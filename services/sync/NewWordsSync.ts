@@ -7,6 +7,22 @@ import { localNewWordsPageTimestamps } from './LocalNewWordsPageTimestamps';
 
 export class NewWordsSync {
   /**
+   * 选择两个日期中较早的一个
+   */
+  private pickEarlierDate(date1: string, date2: string): string {
+    return new Date(date1) < new Date(date2) ? date1 : date2;
+  }
+
+  /**
+   * 选择两个可选日期中较晚的一个（处理 undefined 情况）
+   */
+  private pickLaterDate(date1?: string, date2?: string): string | undefined {
+    if (!date1) return date2;
+    if (!date2) return date1;
+    return new Date(date1) > new Date(date2) ? date1 : date2;
+  }
+
+  /**
    * 上传生词表元数据
    */
   async uploadNewWordsMeta(metadata: NewWordsMetadata): Promise<void> {
@@ -112,24 +128,14 @@ export class NewWordsSync {
           ...existing,
           ...word,
           // 保留最早的 firstSeenAt
-          firstSeenAt: new Date(existing.firstSeenAt) < new Date(word.firstSeenAt)
-            ? existing.firstSeenAt
-            : word.firstSeenAt,
+          firstSeenAt: this.pickEarlierDate(existing.firstSeenAt, word.firstSeenAt),
           // 取最大的 reviewCount
           reviewCount: Math.max(existing.reviewCount, word.reviewCount),
           // 取最新的 lastReviewedAt
-          lastReviewedAt: !existing.lastReviewedAt ? word.lastReviewedAt :
-            !word.lastReviewedAt ? existing.lastReviewedAt :
-              new Date(existing.lastReviewedAt) > new Date(word.lastReviewedAt)
-                ? existing.lastReviewedAt
-                : word.lastReviewedAt,
+          lastReviewedAt: this.pickLaterDate(existing.lastReviewedAt, word.lastReviewedAt),
           // 取最新的 masteredAt
-          masteredAt: !existing.masteredAt ? word.masteredAt :
-            !word.masteredAt ? existing.masteredAt :
-              new Date(existing.masteredAt) > new Date(word.masteredAt)
-                ? existing.masteredAt
-                : word.masteredAt,
-          // 只要有一方标记为困难,就保留困难标记
+          masteredAt: this.pickLaterDate(existing.masteredAt, word.masteredAt),
+          // 只要有一方标记为困难，就保留困难标记
           isMarkedDifficult: existing.isMarkedDifficult || word.isMarkedDifficult,
         };
         wordsMap.set(key, merged);
