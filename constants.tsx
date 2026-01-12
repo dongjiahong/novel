@@ -11,9 +11,9 @@ export const READING_THEMES = {
     text: '#0f172a', // slate-900
   },
   dark: {
-    name: 'Dark',
-    background: '#020617', // slate-950
-    text: '#f8fafc', // slate-50
+    name: 'Soft Dark',
+    background: '#18181b', // zinc-950
+    text: '#e4e4e7', // zinc-200
   },
   'solarized-light': {
     name: 'Solarized Light',
@@ -21,9 +21,9 @@ export const READING_THEMES = {
     text: '#657b83',
   },
   'solarized-dark': {
-    name: 'Solarized Dark',
-    background: '#002b36',
-    text: '#839496',
+    name: 'Warm Dark',
+    background: '#1c1917', // stone-950
+    text: '#e7e5e4', // stone-200
   },
 } as const;
 

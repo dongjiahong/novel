@@ -476,7 +476,7 @@ const Reader: React.FC<ReaderProps> = ({
                     <div className="p-2 sticky top-0 bg-surface border-b border-border z-10">
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm"
                       >
                         <Plus size={16} />
                         <span>添加图书</span>
@@ -493,14 +493,14 @@ const Reader: React.FC<ReaderProps> = ({
                       {books.map(book => (
                         <div
                           key={book.id}
-                          className={`group flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg mb-0.5 ${bookId === book.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-surface2'}`}
+                          className={`group flex items-center justify-between px-3 py-2.5 cursor-pointer rounded-lg mb-0.5 ${bookId === book.id ? 'bg-primary-50 dark:bg-primary-900/30' : 'hover:bg-surface2'}`}
                         >
                           <span
                             onClick={() => {
                               onSelectBook(book.id);
                               setShowBookMenu(false);
                             }}
-                            className={`flex-1 text-sm truncate ${bookId === book.id ? 'text-indigo-600 dark:text-indigo-400 font-medium' : 'text-foreground'}`}
+                            className={`flex-1 text-sm truncate ${bookId === book.id ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-foreground'}`}
                             title={book.title}
                           >
                             {book.title}
@@ -553,7 +553,7 @@ const Reader: React.FC<ReaderProps> = ({
                           onSelectChapter(ch.id);
                           setShowChapterMenu(false);
                         }}
-                        className={`px-4 py-2.5 cursor-pointer text-sm rounded-lg mb-0.5 ${activeChapterId === ch.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-medium' : 'text-foreground hover:bg-surface2'}`}
+                        className={`px-4 py-2.5 cursor-pointer text-sm rounded-lg mb-0.5 ${activeChapterId === ch.id ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-foreground hover:bg-surface2'}`}
                         title={ch.title}
                       >
                         {ch.title}
@@ -609,7 +609,7 @@ const Reader: React.FC<ReaderProps> = ({
 
             {/* 生词统计 */}
             {wordAnalysis.totalNewWords > 0 && (
-              <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-full font-medium hidden lg:inline-flex items-center">
+              <span className="ml-2 text-xs text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2.5 py-1 rounded-full font-medium hidden lg:inline-flex items-center">
                 {Math.min(annotatedNewWordsCount, wordAnalysis.totalNewWords)} /{' '}
                 {wordAnalysis.totalNewWords} 生词
               </span>
@@ -625,7 +625,7 @@ const Reader: React.FC<ReaderProps> = ({
               <button
                 onClick={handleSyncClick}
                 className={`p-2 transition-colors rounded-lg ${syncStatus === 'syncing'
-                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
+                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
                   : 'text-muted hover:bg-surface2'
                   }`}
                 title="同步"
@@ -636,7 +636,7 @@ const Reader: React.FC<ReaderProps> = ({
 
               <button
                 onClick={() => setShowVocabulary(true)}
-                className="relative p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                className="relative p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
                 title="生词本"
               >
                 <GraduationCap size={18} />

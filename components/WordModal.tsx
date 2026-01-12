@@ -77,7 +77,7 @@ export const WordModal: React.FC = () => {
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 px-6 py-4 border-b border-blue-100 dark:border-slate-700 flex justify-between items-start">
+        <div className="bg-gradient-to-r from-blue-50 to-primary-50 dark:from-blue-900/30 dark:to-primary-900/30 px-6 py-4 border-b border-blue-100 dark:border-slate-700 flex justify-between items-start">
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h3 className="text-2xl font-serif font-bold text-blue-900 dark:text-blue-100">{word}</h3>
@@ -93,11 +93,11 @@ export const WordModal: React.FC = () => {
                 </button>
                 <button
                   onClick={() => playPronunciation('us')}
-                  className="group flex items-center gap-0.5 px-2 py-1 rounded-md bg-purple-100 dark:bg-purple-800/50 hover:bg-purple-200 dark:hover:bg-purple-700/50 transition-all hover:scale-105 active:scale-95"
+                  className="group flex items-center gap-0.5 px-2 py-1 rounded-md bg-primary-100 dark:bg-primary-800/50 hover:bg-primary-200 dark:hover:bg-primary-700/50 transition-all hover:scale-105 active:scale-95"
                   title="播放美音"
                 >
-                  <Volume2 size={14} className="text-purple-600 dark:text-purple-300" />
-                  <span className="text-xs font-medium text-purple-600 dark:text-purple-300">US</span>
+                  <Volume2 size={14} className="text-primary-600 dark:text-primary-300" />
+                  <span className="text-xs font-medium text-primary-600 dark:text-primary-300">US</span>
                 </button>
               </div>
             </div>
@@ -149,8 +149,8 @@ export const WordModal: React.FC = () => {
           )}
 
           {isInNewWords && (
-            <div className="mb-6 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg">
-              <p className="text-sm text-purple-700 dark:text-purple-300">
+            <div className="mb-6 p-3 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 rounded-lg">
+              <p className="text-sm text-primary-700 dark:text-primary-300">
                 ✓ 该单词已在生词表中
               </p>
             </div>
@@ -170,7 +170,7 @@ export const WordModal: React.FC = () => {
             ) : (
               <button
                 onClick={handleRemoveFromNewWords}
-                className="w-full py-2.5 px-4 rounded-lg bg-purple-600 dark:bg-purple-700 text-white font-medium hover:bg-purple-700 dark:hover:bg-purple-600 shadow-md shadow-purple-200 dark:shadow-purple-900/30 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-lg bg-primary-600 dark:bg-primary-700 text-white font-medium hover:bg-primary-700 dark:hover:bg-primary-600 shadow-md shadow-primary-200 dark:shadow-primary-900/30 transition-all flex items-center justify-center gap-2"
                 title="从生词表中移除"
               >
                 <XCircle size={16} />

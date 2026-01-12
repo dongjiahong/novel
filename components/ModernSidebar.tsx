@@ -84,7 +84,7 @@ const ModernSidebar: React.FC<SidebarProps> = ({
     <div className="h-full w-80 flex flex-col bg-surface border-r border-border transition-colors duration-300">
       {/* Header */}
       <div className="p-6 border-b border-border flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+        <div className="w-8 h-8 rounded-xl bg-primary-600 flex items-center justify-center shadow-lg shadow-primary-200 dark:shadow-none">
           <BookOpen className="text-white w-5 h-5" />
         </div>
         <h1 className="font-bold text-lg text-foreground tracking-tight">
@@ -98,7 +98,7 @@ const ModernSidebar: React.FC<SidebarProps> = ({
           onClick={() => setActiveTab('library')}
           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'library'
-              ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300'
+              ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300'
               : 'text-muted hover:bg-surface2 hover:text-foreground'
           }`}
         >
@@ -109,7 +109,7 @@ const ModernSidebar: React.FC<SidebarProps> = ({
           onClick={() => setActiveTab('chapters')}
           className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'chapters'
-              ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300'
+              ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300'
               : 'text-muted hover:bg-surface2 hover:text-foreground'
           }`}
         >
@@ -126,7 +126,7 @@ const ModernSidebar: React.FC<SidebarProps> = ({
               <span className="text-xs font-semibold text-muted uppercase tracking-wider">我的书籍</span>
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="p-1.5 rounded-md hover:bg-surface2 text-indigo-600 transition-colors"
+                className="p-1.5 rounded-md hover:bg-surface2 text-primary-600 transition-colors"
                 title="添加书籍"
               >
                 <Plus size={16} />
@@ -153,11 +153,11 @@ const ModernSidebar: React.FC<SidebarProps> = ({
                   onClick={() => onSelectBook(book.id)}
                   className={`group relative flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
                     activeBookId === book.id
-                      ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 shadow-sm'
+                      ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 shadow-sm'
                       : 'text-muted hover:bg-surface2 hover:text-foreground'
                   }`}
                 >
-                  <BookOpen size={16} className={`mr-3 shrink-0 ${activeBookId === book.id ? 'text-indigo-500' : 'text-muted'}`} />
+                  <BookOpen size={16} className={`mr-3 shrink-0 ${activeBookId === book.id ? 'text-primary-500' : 'text-muted'}`} />
                   <span className="text-sm font-medium truncate flex-1">{book.title}</span>
                   
                   <button
@@ -190,11 +190,11 @@ const ModernSidebar: React.FC<SidebarProps> = ({
                   onClick={() => onSelectChapter(chapter.id)}
                   className={`flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
                     activeChapterId === chapter.id
-                      ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 shadow-sm'
+                      ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 shadow-sm'
                       : 'text-muted hover:bg-surface2 hover:text-foreground'
                   }`}
                 >
-                  <div className={`w-1.5 h-1.5 rounded-full mr-3 shrink-0 ${activeChapterId === chapter.id ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full mr-3 shrink-0 ${activeChapterId === chapter.id ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
                   <span className="text-sm truncate">{chapter.title}</span>
                 </div>
               ))
@@ -209,14 +209,14 @@ const ModernSidebar: React.FC<SidebarProps> = ({
         <div className="grid grid-cols-2 gap-2 mb-3">
           <button
             onClick={() => setShowVocabulary(true)}
-            className="flex items-center justify-center gap-2 p-2 rounded-lg bg-surface border border-border hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-sm transition-all group"
+            className="flex items-center justify-center gap-2 p-2 rounded-lg bg-surface border border-border hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm transition-all group"
           >
             <div className="relative">
-              <GraduationCap size={18} className="text-purple-500 group-hover:scale-110 transition-transform" />
+              <GraduationCap size={18} className="text-primary-500 group-hover:scale-110 transition-transform" />
               {unstudiedCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500"></span>
                 </span>
               )}
             </div>

@@ -289,14 +289,14 @@ const WordCard: React.FC<WordCardProps> = ({
                 </span>
                 <button
                   onClick={(e) => onPlayPronunciation(e, wordData.word, 'uk')}
-                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 flex items-center justify-center hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors"
                   title="英式发音"
                 >
                   <span className="text-[8px] font-bold">UK</span>
                 </button>
                 <button
                   onClick={(e) => onPlayPronunciation(e, wordData.word, 'us')}
-                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 flex items-center justify-center hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors"
                   title="美式发音"
                 >
                   <span className="text-[8px] font-bold">US</span>
@@ -351,7 +351,7 @@ const WordCard: React.FC<WordCardProps> = ({
               ) : (
                 <button
                   onClick={onToggleSentence}
-                  className="flex items-center gap-1 text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-medium py-1"
+                  className="flex items-center gap-1 text-[10px] sm:text-xs text-primary-500 dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 font-medium py-1"
                 >
                   <ChevronDown size={12} className="sm:w-[14px] sm:h-[14px]" />
                   展开例句

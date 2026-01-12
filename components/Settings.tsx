@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWordContext } from '../context/WordContext';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, ThemeColor } from '../context/ThemeContext';
 import { X, Download, BookOpen, CheckCircle, Cloud, RefreshCw, Loader2, Check, Sun, Moon, Settings2, Book, Globe, Palette, BarChart2 } from 'lucide-react';
 import { webdavService } from '../services/webdavService';
 import { WebDAVConfig, SyncStatus, SyncProgress, NewWord } from '../types';
@@ -25,9 +25,9 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
     setDictionarySize
   } = useWordContext();
 
-  const { themeMode, setThemeMode } = useTheme();
+  const { themeMode, setThemeMode, themeColor, setThemeColor } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<'vocabulary' | 'newwords' | 'stats' | 'webdav'>('vocabulary');
+  const [activeTab, setActiveTab] = useState<'vocabulary' | 'appearance' | 'newwords' | 'stats' | 'webdav'>('vocabulary');
 
   // WebDAV 配置状态
   const [webdavConfig, setWebdavConfig] = useState<WebDAVConfig>({
@@ -107,9 +107,19 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
 
   const tabs: { id: string; label: string; icon: any; count?: number }[] = [
     { id: 'vocabulary', label: '词汇', icon: Book },
+    { id: 'appearance', label: '外观', icon: Palette },
     { id: 'newwords', label: '生词本', icon: BookOpen, count: newWords.length },
     { id: 'stats', label: '统计', icon: BarChart2 },
     { id: 'webdav', label: '同步', icon: Cloud },
+  ];
+
+  const COLOR_PALETTE: { id: ThemeColor; name: string; color: string }[] = [
+    { id: 'cyan', name: '清澈青', color: '#06b6d4' },
+    { id: 'blue', name: '经典蓝', color: '#3b82f6' },
+    { id: 'purple', name: '优雅紫', color: '#a855f7' },
+    { id: 'emerald', name: '自然绿', color: '#10b981' },
+    { id: 'rose', name: '玫瑰红', color: '#f43f5e' },
+    { id: 'amber', name: '活力橙', color: '#f59e0b' },
   ];
 
   return (
@@ -118,7 +128,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
         {/* Header */}
         <div className="px-4 py-3 sm:px-6 sm:py-5 flex justify-between items-center bg-surface border-b border-border z-10">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+            <div className="p-1.5 sm:p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg text-primary-600 dark:text-primary-400">
               <Settings2 size={18} className="sm:w-5 sm:h-5" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">设置</h2>
@@ -139,7 +149,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${activeTab === tab.id
-                  ? 'bg-background text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                  ? 'bg-background text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
                   : 'text-muted hover:text-foreground hover:bg-background/50'
                   }`}
               >
@@ -147,7 +157,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                 {tab.label}
                 {tab.count !== undefined && tab.count > 0 && (
                   <span className={`ml-1 text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.id
-                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
                     : 'bg-surface2 text-muted'
                     }`}>
                     {tab.count}
@@ -171,7 +181,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
 
                 {isLevelLoading ? (
                   <div className="flex items-center justify-center py-8 sm:py-12">
-                    <Loader2 className="animate-spin text-indigo-500" size={28} />
+                    <Loader2 className="animate-spin text-primary-500" size={28} />
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -180,13 +190,13 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                         key={level.id}
                         onClick={() => setVocabularyLevel(level.id)}
                         className={`group relative p-3 sm:p-5 rounded-xl border-2 text-left transition-all duration-200 ${currentVocabularyLevel?.id === level.id
-                          ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 ring-2 ring-indigo-500/20'
-                          : 'border-border hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-surface2'
+                          ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/20 ring-2 ring-primary-500/20'
+                          : 'border-border hover:border-primary-300 dark:hover:border-primary-700 hover:bg-surface2'
                           }`}
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <h4 className={`font-bold text-sm sm:text-base ${currentVocabularyLevel?.id === level.id ? 'text-indigo-700 dark:text-indigo-300' : 'text-foreground'}`}>
+                            <h4 className={`font-bold text-sm sm:text-base ${currentVocabularyLevel?.id === level.id ? 'text-primary-700 dark:text-primary-300' : 'text-foreground'}`}>
                               {level.name}
                             </h4>
                             <p className="text-xs text-muted mt-1 leading-relaxed">{level.description}</p>
@@ -195,7 +205,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                             </div>
                           </div>
                           {currentVocabularyLevel?.id === level.id && (
-                            <div className="bg-indigo-500 text-white p-0.5 sm:p-1 rounded-full shadow-sm">
+                            <div className="bg-primary-500 text-white p-0.5 sm:p-1 rounded-full shadow-sm">
                               <Check size={12} strokeWidth={3} className="sm:w-[14px] sm:h-[14px]" />
                             </div>
                           )}
@@ -219,8 +229,8 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                       key={size}
                       onClick={() => setDictionarySize(size as 'small' | 'large')}
                       className={`p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 flex items-center justify-between ${dictionarySize === size
-                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
-                        : 'border-border hover:border-indigo-300 dark:hover:border-indigo-700'
+                        ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/20'
+                        : 'border-border hover:border-primary-300 dark:hover:border-primary-700'
                         }`}
                     >
                       <div className="text-left">
@@ -230,13 +240,79 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                         </p>
                       </div>
                       {dictionarySize === size && (
-                        <CheckCircle className="text-indigo-500 w-4 h-4 sm:w-5 sm:h-5" />
+                        <CheckCircle className="text-primary-500 w-4 h-4 sm:w-5 sm:h-5" />
                       )}
                     </button>
                   ))}
                 </div>
               </section>
             </div>
+          )}
+
+          {/* 外观设置 */}
+          {activeTab === 'appearance' && (
+             <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <section>
+                 <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1 sm:mb-2">主题颜色</h3>
+                 <p className="text-xs sm:text-sm text-muted mb-3 sm:mb-4">
+                   选择应用的强调色，打造属于你的阅读空间。
+                 </p>
+                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4">
+                   {COLOR_PALETTE.map((palette) => (
+                     <button
+                       key={palette.id}
+                       onClick={() => setThemeColor(palette.id)}
+                       className={`group relative flex flex-col items-center gap-2 p-2 rounded-xl transition-all duration-200 ${
+                         themeColor === palette.id
+                           ? 'bg-surface2 ring-2 ring-primary-500 ring-offset-2 ring-offset-background'
+                           : 'hover:bg-surface2'
+                       }`}
+                     >
+                       <div 
+                         className="w-8 h-8 sm:w-10 sm:h-10 rounded-full shadow-sm transition-transform group-hover:scale-110 flex items-center justify-center"
+                         style={{ backgroundColor: palette.color }}
+                       >
+                         {themeColor === palette.id && (
+                           <Check className="text-white w-5 h-5" strokeWidth={3} />
+                         )}
+                       </div>
+                       <span className={`text-xs font-medium ${themeColor === palette.id ? 'text-primary-600' : 'text-muted'}`}>
+                         {palette.name}
+                       </span>
+                     </button>
+                   ))}
+                 </div>
+               </section>
+
+               <div className="h-px bg-border" />
+
+               <section>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1 sm:mb-2">界面模式</h3>
+                <p className="text-xs sm:text-sm text-muted mb-3 sm:mb-4">
+                  切换明亮或深色模式，或跟随系统设置。
+                </p>
+                <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                  {[
+                    { id: 'light', label: '明亮', icon: Sun },
+                    { id: 'dark', label: '深色', icon: Moon },
+                    { id: 'auto', label: '跟随系统', icon: Settings2 }
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => setThemeMode(mode.id as any)}
+                      className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
+                        themeMode === mode.id
+                          ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                          : 'border-border hover:border-primary-300 dark:hover:border-primary-700 text-muted hover:text-foreground'
+                      }`}
+                    >
+                      <mode.icon size={20} />
+                      <span className="text-xs sm:text-sm font-medium">{mode.label}</span>
+                    </button>
+                  ))}
+                </div>
+               </section>
+             </div>
           )}
 
           {/* 统计信息 */}
@@ -247,17 +323,17 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
           {/* 生词表 */}
           {activeTab === 'newwords' && (
             <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-br from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-xl border border-primary-100 dark:border-primary-800/30">
                 <div>
-                  <h3 className="text-base sm:text-lg font-bold text-indigo-900 dark:text-indigo-100">我的生词本</h3>
-                  <p className="text-xs sm:text-sm text-indigo-600/80 dark:text-indigo-300/80 mt-0.5 sm:mt-1">
+                  <h3 className="text-base sm:text-lg font-bold text-primary-900 dark:text-primary-100">我的生词本</h3>
+                  <p className="text-xs sm:text-sm text-primary-600/80 dark:text-primary-300/80 mt-0.5 sm:mt-1">
                     共 {newWords.length} 个生词等待复习
                   </p>
                 </div>
                 <button
                   onClick={() => exportNewWords()}
                   disabled={newWords.length === 0}
-                  className="flex items-center justify-center gap-1.5 sm:gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-surface text-indigo-600 dark:text-indigo-400 rounded-lg hover:shadow-md hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-xs sm:text-sm font-medium shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-800"
+                  className="flex items-center justify-center gap-1.5 sm:gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-surface text-primary-600 dark:text-primary-400 rounded-lg hover:shadow-md hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-xs sm:text-sm font-medium shadow-sm ring-1 ring-primary-100 dark:ring-primary-800"
                 >
                   <Download size={14} className="sm:w-4 sm:h-4" />
                   导出所有生词
@@ -290,7 +366,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                         </div>
                         <button
                           onClick={() => exportNewWords(words[0]?.bookId)}
-                          className="text-[10px] sm:text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors flex items-center gap-1"
+                          className="text-[10px] sm:text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-200 px-2 py-1 rounded hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors flex items-center gap-1"
                         >
                           <Download size={12} />
                           导出
@@ -302,7 +378,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                           {words.slice(0, 15).map((word, idx) => (
                             <div
                               key={idx}
-                              className="text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-surface rounded-lg border border-border hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors cursor-default group/word relative"
+                              className="text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-surface rounded-lg border border-border hover:border-primary-200 dark:hover:border-primary-800 transition-colors cursor-default group/word relative"
                             >
                               <span className="font-medium text-foreground">{word.word}</span>
                               {word.translation && (
@@ -357,7 +433,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                         value={webdavConfig.url}
                         onChange={(e) => setWebdavConfig({ ...webdavConfig, url: e.target.value })}
                         placeholder={`${window.location.origin}/webdav-proxy/`}
-                        className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-base bg-surface2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-foreground placeholder-muted"
+                        className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-base bg-surface2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-foreground placeholder-muted"
                       />
                     </div>
                   </div>
@@ -371,7 +447,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                         type="text"
                         value={webdavConfig.username}
                         onChange={(e) => setWebdavConfig({ ...webdavConfig, username: e.target.value })}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-base bg-surface2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-foreground"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-base bg-surface2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-foreground"
                       />
                     </div>
                     <div>
@@ -382,7 +458,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                         type="password"
                         value={webdavConfig.password}
                         onChange={(e) => setWebdavConfig({ ...webdavConfig, password: e.target.value })}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-base bg-surface2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-foreground"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-base bg-surface2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all text-foreground"
                       />
                     </div>
                   </div>
@@ -400,7 +476,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                       checked={webdavConfig.autoSync}
                       onChange={(e) => setWebdavConfig({ ...webdavConfig, autoSync: e.target.checked })}
                     />
-                    <div className="w-9 h-5 sm:w-11 sm:h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 sm:after:h-5 sm:after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                    <div className="w-9 h-5 sm:w-11 sm:h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 sm:after:h-5 sm:after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
 
@@ -408,7 +484,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                   <button
                     onClick={handleSaveWebDAVConfig}
                     disabled={!webdavConfig.username}
-                    className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium"
+                    className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium"
                   >
                     {configSaved ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" /> : null}
                     {configSaved ? '已保存' : '保存配置'}
@@ -466,7 +542,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose, syncStatus, syncProgress, 
                         <button
                           onClick={handleManualSync}
                           disabled={!webdavConfig.url || syncStatus === 'syncing'}
-                          className="p-1.5 sm:p-2 text-muted hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors disabled:opacity-50"
+                          className="p-1.5 sm:p-2 text-muted hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors disabled:opacity-50"
                           title="立即同步"
                         >
                           <RefreshCw size={16} className={`sm:w-[18px] sm:h-[18px] ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />

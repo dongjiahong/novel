@@ -506,7 +506,7 @@ function AppContent() {
       {isParsing && (
         <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
-            <Loader2 className="animate-spin text-indigo-600 mb-3" size={32} />
+            <Loader2 className="animate-spin text-primary-600 mb-3" size={32} />
             <span className="text-slate-700 font-medium">正在解析图书内容...</span>
           </div>
         </div>
@@ -544,7 +544,7 @@ function AppContent() {
 
       {/* 下载书籍提示 */}
       {downloadingBook && (
-        <div className="absolute top-16 right-4 z-50 bg-purple-100 text-purple-700 px-2 py-1 rounded shadow border border-purple-200 flex items-center gap-2">
+        <div className="absolute top-16 right-4 z-50 bg-primary-100 text-primary-700 px-2 py-1 rounded shadow border border-primary-200 flex items-center gap-2">
           <Loader2 className="animate-spin" size={14} />
           <span className="text-sm">正在下载: {downloadingBook}</span>
         </div>

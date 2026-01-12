@@ -36,7 +36,7 @@ const StatisticsTab: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="animate-spin text-indigo-500" size={32} />
+        <Loader2 className="animate-spin text-primary-500" size={32} />
       </div>
     );
   }
@@ -57,7 +57,7 @@ const StatisticsTab: React.FC = () => {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* 概览卡片 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-2xl text-white shadow-lg">
+        <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-4 rounded-2xl text-white shadow-lg">
           <div className="flex items-center gap-2 mb-2 opacity-90">
             <Clock size={16} />
             <span className="text-xs font-medium">今日阅读</span>
@@ -103,7 +103,7 @@ const StatisticsTab: React.FC = () => {
             return (
               <div key={stat.date} className="flex-1 flex flex-col items-center gap-2 group relative">
                 <div 
-                  className="w-full bg-indigo-100 dark:bg-indigo-900/40 rounded-t-md transition-all duration-500 hover:bg-indigo-500 dark:hover:bg-indigo-500"
+                  className="w-full bg-primary-100 dark:bg-primary-900/40 rounded-t-md transition-all duration-500 hover:bg-primary-500 dark:hover:bg-primary-500"
                   style={{ height: `${Math.max(height, 5)}%` }}
                 >
                   {/* Tooltip */}

@@ -16,7 +16,7 @@ export const ThemeSwatch: React.FC<ThemeSwatchProps> = ({ theme, isActive, onCli
       onClick={() => onClick(theme)}
       className={`w-6 h-6 rounded-full border-2 transition-all transform hover:scale-110 flex items-center justify-center ${
         isActive 
-          ? 'border-indigo-500 scale-110 shadow-sm' 
+          ? 'border-primary-500 scale-110 shadow-sm' 
           : 'border-border'
       }`}
       style={{ backgroundColor: themeConfig.background }}

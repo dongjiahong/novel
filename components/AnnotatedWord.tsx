@@ -160,7 +160,7 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 
   // 4. 如果是生词但不应该标注（性能优化），渲染为普通文本
   if (!shouldAnnotate) {
-    const hoverBgClass = isInNewWords ? 'hover:bg-purple-50 dark:hover:bg-purple-900/30' : 'hover:bg-orange-50 dark:hover:bg-orange-900/30';
+    const hoverBgClass = isInNewWords ? 'hover:bg-primary-50 dark:hover:bg-primary-900/30' : 'hover:bg-orange-50 dark:hover:bg-orange-900/30';
     return (
       <span
         className={`cursor-pointer ${hoverBgClass} rounded px-0.5 transition-colors select-none`}
@@ -184,9 +184,9 @@ export const AnnotatedWord: React.FC<AnnotatedWordProps> = ({
 
   // 5. 生词：显示完整标注（悬浮样式）
   // 区分普通生词（橙色）和生词表中的生词（紫色）
-  const annotationColor = isInNewWords ? 'purple' : 'orange';
-  const textColorClass = isInNewWords ? 'text-purple-600 dark:text-purple-400' : 'text-orange-600 dark:text-orange-400';
-  const hoverColorClass = isInNewWords ? 'hover:text-purple-700 dark:hover:text-purple-300' : 'hover:text-orange-700 dark:hover:text-orange-300';
+  const annotationColor = isInNewWords ? 'cyan' : 'orange';
+  const textColorClass = isInNewWords ? 'text-primary-600 dark:text-primary-400' : 'text-orange-600 dark:text-orange-400';
+  const hoverColorClass = isInNewWords ? 'hover:text-primary-700 dark:hover:text-primary-300' : 'hover:text-orange-700 dark:hover:text-orange-300';
 
   return (
     <span

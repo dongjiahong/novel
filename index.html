@@ -19,6 +19,19 @@
               foreground: 'var(--text-foreground)',
               muted: 'var(--text-muted)',
               border: 'var(--border-color)',
+              primary: {
+                50: 'rgb(var(--color-primary-50) / <alpha-value>)',
+                100: 'rgb(var(--color-primary-100) / <alpha-value>)',
+                200: 'rgb(var(--color-primary-200) / <alpha-value>)',
+                300: 'rgb(var(--color-primary-300) / <alpha-value>)',
+                400: 'rgb(var(--color-primary-400) / <alpha-value>)',
+                500: 'rgb(var(--color-primary-500) / <alpha-value>)',
+                600: 'rgb(var(--color-primary-600) / <alpha-value>)',
+                700: 'rgb(var(--color-primary-700) / <alpha-value>)',
+                800: 'rgb(var(--color-primary-800) / <alpha-value>)',
+                900: 'rgb(var(--color-primary-900) / <alpha-value>)',
+                950: 'rgb(var(--color-primary-950) / <alpha-value>)',
+              }
             }
           }
         }
@@ -29,6 +42,19 @@
 
       /* 主题颜色变量 */
       :root {
+        /* Default Primary Color (Cyan) */
+        --color-primary-50: 236 254 255;
+        --color-primary-100: 207 250 254;
+        --color-primary-200: 165 243 252;
+        --color-primary-300: 103 232 249;
+        --color-primary-400: 34 211 238;
+        --color-primary-500: 6 182 212;
+        --color-primary-600: 8 145 178;
+        --color-primary-700: 14 116 144;
+        --color-primary-800: 21 94 117;
+        --color-primary-900: 22 78 99;
+        --color-primary-950: 8 51 68;
+
         /* Light Theme (Default) */
         --bg-background: #ffffff;
         --bg-surface: #ffffff;
@@ -41,14 +67,14 @@
         --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
       }
 
-      /* Dark Theme */
+      /* Dark Theme - Redesigned (Soft Zinc) */
       .dark, .theme-dark {
-        --bg-background: #020617; /* slate-950 */
-        --bg-surface: #0f172a; /* slate-900 */
-        --bg-surface-2: #1e293b; /* slate-800 */
-        --text-foreground: #f8fafc; /* slate-50 */
-        --text-muted: #94a3b8; /* slate-400 */
-        --border-color: #1e293b; /* slate-800 */
+        --bg-background: #18181b; /* zinc-950 */
+        --bg-surface: #27272a; /* zinc-800 */
+        --bg-surface-2: #3f3f46; /* zinc-700 */
+        --text-foreground: #e4e4e7; /* zinc-200 */
+        --text-muted: #a1a1aa; /* zinc-400 */
+        --border-color: #27272a; /* zinc-800 */
       }
 
       /* Solarized Light Theme */
@@ -61,14 +87,14 @@
         --border-color: #d3d0c8; /* Custom border for solarized */
       }
 
-      /* Solarized Dark Theme */
+      /* Solarized Dark Theme - Redesigned (Warm Stone) */
       .theme-solarized-dark {
-        --bg-background: #002b36; /* base03 */
-        --bg-surface: #073642; /* base02 */
-        --bg-surface-2: #094654; /* Slightly lighter than base02 */
-        --text-foreground: #839496; /* base0 */
-        --text-muted: #586e75; /* base01 */
-        --border-color: #0f3a4e; /* Custom border */
+        --bg-background: #1c1917; /* stone-950 */
+        --bg-surface: #292524; /* stone-800 */
+        --bg-surface-2: #44403c; /* stone-700 */
+        --text-foreground: #e7e5e4; /* stone-200 */
+        --text-muted: #a8a29e; /* stone-400 */
+        --border-color: #292524; /* stone-800 */
       }
 
       body {
